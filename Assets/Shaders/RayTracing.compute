@@ -1,0 +1,14 @@
+﻿#pragma kernel CSMain
+
+RWTexture2D<float4> result;
+float screenWidth;
+float screenHeight;
+
+float3 Color (uint x, uint y) {
+    return float3 ((float)x / screenWidth, (float)y / screenHeight, 0);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    result[id.xy] = float4(Color(id.x, id.y), 0);
+}
