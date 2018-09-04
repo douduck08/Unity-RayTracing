@@ -1,14 +1,32 @@
 ﻿#pragma kernel CSMain
 
-RWTexture2D<float4> result;
-float screenWidth;
-float screenHeight;
+#include "RayTracing.cginc"
 
-float3 Color (uint x, uint y) {
-    return float3 ((float)x / screenWidth, (float)y / screenHeight, 0);
+RWTexture2D<float4> result;
+float4 cameraParameter;
+float4x4 cameraCorner;
+
+StructuredBuffer<SphereData> sphereBuffer;
+
+float3 getColor (Ray ray) {
+    RayHit hit;
+    if (hitSphere(ray, sphereBuffer[0], /*out*/hit)) {
+        return hit.normal * 0.5 + 0.5;
+    } 
+    if (hitSphere(ray, sphereBuffer[1], /*out*/hit)) {
+        return hit.normal * 0.5 + 0.5;
+    }
+
+    return float3(0.5, 0.7, 1);
 }
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
-    result[id.xy] = float4(Color(id.x, id.y), 0);
+    float2 uv = float2(cameraParameter.z * id.x, cameraParameter.w * id.y);
+
+    Ray ray;
+    ray.origin = 0;
+    ray.direction = cameraCorner[0].xyz + uv.x * cameraCorner[1].xyz + uv.y * cameraCorner[2].xyz;
+
+    result[id.xy] = float4(getColor(ray), 0);
 }
