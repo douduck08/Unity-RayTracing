@@ -6,27 +6,54 @@ RWTexture2D<float4> result;
 float4 cameraParameter;
 float4x4 cameraCorner;
 
+int sphereNumber;
 StructuredBuffer<SphereData> sphereBuffer;
 
-float3 getColor (Ray ray) {
-    RayHit hit;
-    if (hitSphere(ray, sphereBuffer[0], /*out*/hit)) {
-        return hit.normal * 0.5 + 0.5;
-    } 
-    if (hitSphere(ray, sphereBuffer[1], /*out*/hit)) {
-        return hit.normal * 0.5 + 0.5;
-    }
+Ray CreateCameraRay (float2 uv) {
+    return CreateRay(cameraCorner[0].xyz, cameraCorner[1].xyz + uv.x * cameraCorner[2].xyz + uv.y * cameraCorner[3].xyz);
+}
 
-    return float3(0.5, 0.7, 1);
+bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
+    RayHit hit, tmp_hit;
+    hit.t = 1000.0;
+    bool hit_something = false;
+    for (int i = 0; i < sphereNumber; i++) {
+        if (HitSphere(ray, sphereBuffer[i], 0.0001, hit.t, /*out*/tmp_hit)) {
+            hit_something = true;
+            hit = tmp_hit;
+        } 
+    }
+    if (hit_something) {
+        color = 0;
+        next_ray = CreateRay(hit.position, hit.normal + RandInUnitSphere (hit.normal));
+    } else {
+        color = float3(0.5, 0.7, 1);
+        next_ray = (Ray)0;
+    }
+    return hit_something;
+}
+
+float3 GetColorAt (float2 uv) {
+    Ray ray = CreateCameraRay(uv);
+    bool need_sample = true;
+    float decade = 1;
+    float3 final_color;
+    while (need_sample) {
+        need_sample = SampleColor (ray, /*out*/final_color, /*out*/ray);
+        decade = decade * 0.7;
+    }
+    return final_color * decade;
 }
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
     float2 uv = float2(cameraParameter.z * id.x, cameraParameter.w * id.y);
 
-    Ray ray;
-    ray.origin = 0;
-    ray.direction = cameraCorner[0].xyz + uv.x * cameraCorner[1].xyz + uv.y * cameraCorner[2].xyz;
+    float3 color = 0;
+    color += GetColorAt(uv);
+    color += GetColorAt(uv + float2(cameraParameter.z * 0.5, 0));
+    color += GetColorAt(uv + float2(0, cameraParameter.w * 0.5));
+    color += GetColorAt(uv + float2(cameraParameter.z * 0.5, cameraParameter.w * 0.5));
 
-    result[id.xy] = float4(getColor(ray), 0);
+    result[id.xy] = float4(color * 0.25, 0);
 }

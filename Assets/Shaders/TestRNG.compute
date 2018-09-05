@@ -1,0 +1,16 @@
+﻿#pragma kernel CSMain
+
+RWTexture2D<float4> result;
+float4 cameraParameter;
+
+float rand (float2 st) {
+    return frac(sin(dot(st, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    float2 uv = float2(cameraParameter.z * id.x, cameraParameter.w * id.y);
+    
+    float f0 = float(rand(uv));
+    result[id.xy] = f0;
+}
