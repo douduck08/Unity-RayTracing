@@ -15,6 +15,7 @@ struct RayHit {
 struct SphereData {
     float3 position;
     float radius;
+    float4 color;
 };
 
 Ray CreateRay (float3 origin, float3 direction) {

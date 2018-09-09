@@ -34,22 +34,31 @@ public class RenderWithRayTracing : MonoBehaviour {
         renderTarget.enableRandomWrite = true;
         renderTarget.Create ();
 
-        kernelID = rayTracingShader.FindKernel ("CSMain");
+        kernelID = 0;
         rayTracingShader.SetTexture (kernelID, "result", renderTarget);
 
         CalculateCameraParameter ();
         rayTracingShader.SetVector ("cameraParameter", cameraParameter);
 
-        sphereBuffer = new ComputeBuffer (2, 16);
-        rayTracingShader.SetInt ("sphereNumber", 2);
+        int sphereNumber = 4; // tmp
+        sphereBuffer = new ComputeBuffer (sphereNumber, 32);
+        rayTracingShader.SetInt ("sphereNumber", sphereNumber);
         rayTracingShader.SetBuffer (kernelID, "sphereBuffer", sphereBuffer);
 
         // tmp
-        var data = new SphereData[2];
+        var data = new SphereData[sphereNumber];
         data[0].position = new Vector3 (0, 0, 5);
         data[0].radius = 1;
+        data[0].color = Color.red;
         data[1].position = new Vector3 (0, -51, 5);
         data[1].radius = 50;
+        data[1].color = Color.white;
+        data[2].position = new Vector3 (-2, 0, 5);
+        data[2].radius = 1;
+        data[2].color = Color.green;
+        data[3].position = new Vector3 (2, 0, 5);
+        data[3].radius = 1;
+        data[3].color = Color.blue;
         sphereBuffer.SetData (data);
     }
 

@@ -17,14 +17,16 @@ bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
     RayHit hit, tmp_hit;
     hit.t = 1000.0;
     bool hit_something = false;
+    int sphere_id;
     for (int i = 0; i < sphereNumber; i++) {
-        if (HitSphere(ray, sphereBuffer[i], 0.0001, hit.t, /*out*/tmp_hit)) {
+        if (HitSphere(ray, sphereBuffer[i], 0.001, hit.t, /*out*/tmp_hit)) {
             hit_something = true;
             hit = tmp_hit;
+            sphere_id = i;
         } 
     }
     if (hit_something) {
-        color = 0;
+        color = sphereBuffer[sphere_id].color.rgb * 0.9; // TODO: metallic
         next_ray = CreateRay(hit.position, hit.normal + RandInUnitSphere (hit.normal));
     } else {
         color = float3(0.5, 0.7, 1);
@@ -36,13 +38,19 @@ bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
 float3 GetColorAt (float2 uv) {
     Ray ray = CreateCameraRay(uv);
     bool need_sample = true;
-    float decade = 1;
-    float3 final_color;
-    while (need_sample) {
-        need_sample = SampleColor (ray, /*out*/final_color, /*out*/ray);
-        decade = decade * 0.7;
+    int depth;
+    float3 final_color = 1, sample_color;
+    while (need_sample && depth < 50) {
+        need_sample = SampleColor (ray, /*out*/sample_color, /*out*/ray);
+        final_color *= sample_color;
+        depth += 1;
     }
-    return final_color * decade;
+    return final_color;
+}
+
+float3 GammaToLinearSpace (float3 sRGB) {
+    // Approximate version from http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
+    return sRGB * (sRGB * (sRGB * 0.305306011h + 0.682171111h) + 0.012522878h);
 }
 
 [numthreads(8,8,1)]
@@ -54,6 +62,9 @@ void CSMain (uint3 id : SV_DispatchThreadID) {
     color += GetColorAt(uv + float2(cameraParameter.z * 0.5, 0));
     color += GetColorAt(uv + float2(0, cameraParameter.w * 0.5));
     color += GetColorAt(uv + float2(cameraParameter.z * 0.5, cameraParameter.w * 0.5));
+    color = color * 0.25;
 
-    result[id.xy] = float4(color * 0.25, 0);
+    color = GammaToLinearSpace(color);
+
+    result[id.xy] = float4(color, 0);
 }
