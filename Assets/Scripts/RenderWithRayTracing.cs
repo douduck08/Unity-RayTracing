@@ -5,73 +5,37 @@ using UnityEngine;
 [RequireComponent (typeof (Camera))]
 public class RenderWithRayTracing : MonoBehaviour {
 
-    public ComputeShader rayTracingShader;
-    int kernelID;
+    Camera mainCamera;
+    RenderTexture renderTarget;
+    Vector3[] frustumCorners = new Vector3[4];
 
+    [SerializeField] ComputeShader rayTracingShader;
+    int kernelID = 0;
     ComputeBuffer sphereBuffer;
 
-    RenderTexture renderTarget;
-    int width;
-    int height;
-
-    new Camera camera;
-    Camera cameraCache {
-        get {
-            if (camera == null) {
-                camera = GetComponent<Camera> ();
-            }
-            return camera;
-        }
-    }
-    Vector3[] frustumCorners = new Vector3[4];
-    Matrix4x4 cameraFrustumData;
-    Vector4 cameraParameter;
-
-    void Start () {
-        width = cameraCache.pixelWidth;
-        height = cameraCache.pixelHeight;
-        renderTarget = new RenderTexture (width, height, 0);
-        renderTarget.enableRandomWrite = true;
-        renderTarget.Create ();
-
-        kernelID = 0;
+    void OnEnable () {
+        mainCamera = GetComponent<Camera> ();
+        renderTarget = CreateRenderTarget (mainCamera.pixelWidth, mainCamera.pixelHeight);
         rayTracingShader.SetTexture (kernelID, "result", renderTarget);
 
-        CalculateCameraParameter ();
-        rayTracingShader.SetVector ("cameraParameter", cameraParameter);
-
-        int sphereNumber = 4; // tmp
-        sphereBuffer = new ComputeBuffer (sphereNumber, 32);
-        rayTracingShader.SetInt ("sphereNumber", sphereNumber);
+        sphereBuffer = new ComputeBuffer (1000, RayTracingObjectDataSize.Sphere);
         rayTracingShader.SetBuffer (kernelID, "sphereBuffer", sphereBuffer);
-
-        // tmp
-        var data = new SphereData[sphereNumber];
-        data[0].position = new Vector3 (0, 0, 5);
-        data[0].radius = 1;
-        data[0].color = Color.red;
-        data[1].position = new Vector3 (0, -51, 5);
-        data[1].radius = 50;
-        data[1].color = Color.white;
-        data[2].position = new Vector3 (-2, 0, 5);
-        data[2].radius = 1;
-        data[2].color = Color.green;
-        data[3].position = new Vector3 (2, 0, 5);
-        data[3].radius = 1;
-        data[3].color = Color.blue;
-        sphereBuffer.SetData (data);
     }
 
-    void OnDestroy () {
+    void OnDisable () {
         if (sphereBuffer != null) {
             sphereBuffer.Release ();
         }
     }
 
     void OnPreRender () {
-        CalculateFrustumData ();
-        rayTracingShader.SetMatrix ("cameraCorner", cameraFrustumData);
-        rayTracingShader.Dispatch (kernelID, Mathf.CeilToInt (width / 8.0f), Mathf.CeilToInt (height / 8.0f), 1);
+        rayTracingShader.SetVector ("cameraParameter", GetCameraParameter (mainCamera.pixelWidth, mainCamera.pixelHeight));
+        rayTracingShader.SetMatrix ("cameraCorner", GetCameraCorner ());
+
+        rayTracingShader.SetInt ("sphereNumber", RayTracingObjectManager.instance.sphereNumber);
+        sphereBuffer.SetData (RayTracingObjectManager.instance.sphereDataArray);
+
+        rayTracingShader.Dispatch (kernelID, Mathf.CeilToInt (mainCamera.pixelWidth / 8.0f), Mathf.CeilToInt (mainCamera.pixelHeight / 8.0f), 1);
     }
 
     void OnRenderImage (RenderTexture source, RenderTexture dest) {
@@ -79,23 +43,32 @@ public class RenderWithRayTracing : MonoBehaviour {
     }
 
     void OnDrawGizmos () {
-        CalculateFrustumData ();
         for (int i = 0; i < 4; i++) {
             var worldSpaceCorner = transform.TransformVector (frustumCorners[i]);
             Debug.DrawRay (transform.position, worldSpaceCorner, Color.blue);
         }
     }
 
-    void CalculateCameraParameter () {
-        cameraParameter = new Vector4 (width, height, 1f / width, 1f / height);
+    RenderTexture CreateRenderTarget (int width, int height) {
+        var rt = new RenderTexture (width, height, 0);
+        rt.enableRandomWrite = true;
+        rt.Create ();
+        return rt;
     }
 
-    void CalculateFrustumData () {
-        cameraCache.CalculateFrustumCorners (new Rect (0, 0, 1, 1), cameraCache.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
-        cameraFrustumData.SetRow (0, transform.position);
-        cameraFrustumData.SetRow (1, Vector3.Normalize (frustumCorners[0]));
-        cameraFrustumData.SetRow (2, Vector3.Normalize (frustumCorners[2]) - Vector3.Normalize (frustumCorners[1]));
-        cameraFrustumData.SetRow (3, Vector3.Normalize (frustumCorners[1]) - Vector3.Normalize (frustumCorners[0]));
+    Vector4 GetCameraParameter (int width, int height) {
+        return new Vector4 (width, height, 1f / width, 1f / height);
     }
 
+    Matrix4x4 GetCameraCorner () {
+        mainCamera.CalculateFrustumCorners (new Rect (0, 0, 1, 1), mainCamera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
+
+        Matrix4x4 cameraCorner = new Matrix4x4 ();
+        cameraCorner.SetRow (0, transform.position);
+        cameraCorner.SetRow (1, Vector3.Normalize (frustumCorners[0]));
+        cameraCorner.SetRow (2, Vector3.Normalize (frustumCorners[2]) - Vector3.Normalize (frustumCorners[1]));
+        cameraCorner.SetRow (3, Vector3.Normalize (frustumCorners[1]) - Vector3.Normalize (frustumCorners[0]));
+
+        return cameraCorner;
+    }
 }
