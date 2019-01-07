@@ -1,16 +1,18 @@
-﻿#pragma kernel CSMain
+﻿#pragma kernel InitCameraRays
+#pragma kernel RayTracing
+#pragma kernel NormalizeSamples
 
 #include "RayTracing.cginc"
 
 RWTexture2D<float4> result;
 float4 cameraParameter;
-float4x4 cameraCorner;
+float4x4 cameraRayParameter;
 
 int sphereNumber;
 StructuredBuffer<SphereData> sphereBuffer;
 
 Ray CreateCameraRay (float2 uv) {
-    return CreateRay(cameraCorner[0].xyz, cameraCorner[1].xyz + uv.x * cameraCorner[2].xyz + uv.y * cameraCorner[3].xyz);
+    return CreateRay(cameraRayParameter[0].xyz, cameraRayParameter[1].xyz + uv.x * cameraRayParameter[2].xyz + uv.y * cameraRayParameter[3].xyz);
 }
 
 bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
@@ -23,7 +25,7 @@ bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
             hit_something = true;
             hit = tmp_hit;
             sphere_id = i;
-        } 
+        }
     }
     if (hit_something) {
         color = sphereBuffer[sphere_id].color.rgb * 0.9; // TODO: metallic
@@ -54,7 +56,7 @@ float3 GammaToLinearSpace (float3 sRGB) {
 }
 
 [numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID) {
+void RayTracing (uint3 id : SV_DispatchThreadID) {
     float2 uv = float2(cameraParameter.z * id.x, cameraParameter.w * id.y);
 
     float3 color = 0;
