@@ -5,7 +5,7 @@
 #include "RayTracing.cginc"
 
 RWTexture2D<float4> result;
-float4 cameraParameter;
+float4 renderParameter;
 float4x4 cameraRayParameter;
 
 int sphereNumber;
@@ -56,17 +56,27 @@ float3 GammaToLinearSpace (float3 sRGB) {
 }
 
 [numthreads(8,8,1)]
+void InitCameraRays (uint3 id : SV_DispatchThreadID) {
+
+}
+
+[numthreads(8,8,1)]
 void RayTracing (uint3 id : SV_DispatchThreadID) {
-    float2 uv = float2(cameraParameter.z * id.x, cameraParameter.w * id.y);
+    float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
 
     float3 color = 0;
     color += GetColorAt(uv);
-    color += GetColorAt(uv + float2(cameraParameter.z * 0.5, 0));
-    color += GetColorAt(uv + float2(0, cameraParameter.w * 0.5));
-    color += GetColorAt(uv + float2(cameraParameter.z * 0.5, cameraParameter.w * 0.5));
+    color += GetColorAt(uv + float2(renderParameter.z * 0.5, 0));
+    color += GetColorAt(uv + float2(0, renderParameter.w * 0.5));
+    color += GetColorAt(uv + float2(renderParameter.z * 0.5, renderParameter.w * 0.5));
     color = color * 0.25;
 
     color = GammaToLinearSpace(color);
 
     result[id.xy] = float4(color, 0);
+}
+
+[numthreads(8,8,1)]
+void NormalizeSamples (uint3 id : SV_DispatchThreadID) {
+
 }
