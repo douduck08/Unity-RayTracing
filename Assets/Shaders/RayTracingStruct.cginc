@@ -25,13 +25,10 @@ struct SphereData {
 };
 
 Ray CreateRay (float3 origin, float3 direction) {
-    Ray ray;
+    Ray ray = (Ray)0;
     ray.origin = origin;
     ray.direction = direction;
     ray.color = 1;
-    ray.pad0 = 0;
-    ray.pad1 = 0;
-    ray.pad2 = 0;
     return ray;
 }
 

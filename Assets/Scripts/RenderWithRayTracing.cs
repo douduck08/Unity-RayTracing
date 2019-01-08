@@ -48,9 +48,8 @@ public class RenderWithRayTracing : MonoBehaviour {
     }
 
     void OnDisable () {
-        if (sphereBuffer != null) {
-            sphereBuffer.Release ();
-        }
+        if (rayBuffer != null) rayBuffer.Release ();
+        if (sphereBuffer != null) sphereBuffer.Release ();
     }
 
     // render pipeline
@@ -64,6 +63,7 @@ public class RenderWithRayTracing : MonoBehaviour {
     void OnRenderObject () {
         rayTracingKernals.Dispatch (initCameraRaysKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
         rayTracingKernals.Dispatch (rayTracingKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
+        rayTracingKernals.Dispatch (normalizeSamplesKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), 1);
     }
 
     void OnRenderImage (RenderTexture source, RenderTexture dest) {

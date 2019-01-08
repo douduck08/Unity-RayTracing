@@ -2,6 +2,7 @@
 #pragma kernel RayTracing
 #pragma kernel NormalizeSamples
 
+#include "UnityCG.cginc"
 #include "RayTracingCommon.cginc"
 #include "RayTracingStruct.cginc"
 
@@ -31,31 +32,13 @@ bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
         }
     }
     if (hit_something) {
-        color = sphereBuffer[sphere_id].color.rgb; // TODO: metallic
+        color = sphereBuffer[sphere_id].color.rgb * 0.9; // TODO: metallic
         next_ray = CreateRay(hit.position, hit.normal + RandInUnitSphere (hit.normal));
     } else {
         color = float3(0.5, 0.7, 1);
         next_ray = (Ray)0;
     }
     return hit_something;
-}
-
-float3 GetColorAt (float2 uv) {
-    Ray ray = CreateCameraRay(uv);
-    bool need_sample = true;
-    int depth;
-    float3 final_color = 1, sample_color;
-    while (need_sample && depth < 50) {
-        need_sample = SampleColor (ray, /*out*/sample_color, /*out*/ray);
-        final_color *= sample_color;
-        depth += 1;
-    }
-    return final_color;
-}
-
-float3 GammaToLinearSpace (float3 sRGB) {
-    // Approximate version from http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
-    return sRGB * (sRGB * (sRGB * 0.305306011h + 0.682171111h) + 0.012522878h);
 }
 
 [numthreads(8,8,1)]
@@ -65,6 +48,7 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
 
     int rayIndex = (id.x + id.y * width) + (width * height * id.z);
     float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
+    uv += Rand(uv + _SinTime.x) * renderParameter.zw;
 
     Ray ray = CreateCameraRay (uv);
     rayBuffer[rayIndex] = ray;
@@ -78,29 +62,41 @@ void RayTracing (uint3 id : SV_DispatchThreadID) {
     int rayIndex = (id.x + id.y * width) + (width * height * id.z);
     float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
 
-    float3 color = 1;
-    // color += GetColorAt(uv);
-    // color += GetColorAt(uv + float2(renderParameter.z * 0.5, 0));
-    // color += GetColorAt(uv + float2(0, renderParameter.w * 0.5));
-    // color += GetColorAt(uv + float2(renderParameter.z * 0.5, renderParameter.w * 0.5));
-    // color = color * 0.25;
-
     Ray ray = rayBuffer[rayIndex];
     bool need_sample = true;
     int depth;
+    float3 color = ray.color;
     float3 sample_color;
     while (need_sample && depth < 50) {
         need_sample = SampleColor (ray, /*out*/sample_color, /*out*/ray);
         color *= sample_color;
         depth += 1;
     }
+    ray.color = color;
 
-    color = GammaToLinearSpace(color);
-
-    result[id.xy] = float4(color, 0);
+    rayBuffer[rayIndex] = ray;
 }
 
 [numthreads(8,8,1)]
 void NormalizeSamples (uint3 id : SV_DispatchThreadID) {
+    uint width, height;
+    result.GetDimensions(width, height);
 
+    uint rayNumber, stride;
+    rayBuffer.GetDimensions(rayNumber, stride);
+
+    uint totalPixels = width * height;
+    float3 color = 0;
+    int samples = 0;
+    for (uint rayIndex = id.x + id.y * width; rayIndex < rayNumber; rayIndex += totalPixels) {
+        color += rayBuffer[rayIndex].color;
+        samples += 1;
+    }
+    
+    if (samples > 0) {
+        color /= samples;
+        // color = GammaToLinearSpace(color);
+    }
+
+    result[id.xy] = float4(color, 1);
 }
