@@ -1,9 +1,15 @@
-#ifndef RAY_TRACING_INCLUDED
-#define RAY_TRACING_INCLUDED
+#ifndef RAY_TRACING_STRUCT_INCLUDED
+#define RAY_TRACING_STRUCT_INCLUDED
+
+#include "RayTracingCommon.cginc"
 
 struct Ray {
     float3 origin;
+    float pad0;
     float3 direction;
+    float pad1;
+    float3 color;
+    float pad2;
 };
 
 struct RayHit {
@@ -22,20 +28,11 @@ Ray CreateRay (float3 origin, float3 direction) {
     Ray ray;
     ray.origin = origin;
     ray.direction = direction;
+    ray.color = 1;
+    ray.pad0 = 0;
+    ray.pad1 = 0;
+    ray.pad2 = 0;
     return ray;
-}
-
-float Rand (float2 st) {
-    return frac(sin(dot(st, float2(12.9898, 78.233))) * 43758.5453);
-}
-
-float3 RandInUnitSphere (float3 normal) {
-    float3 seed = normal;
-    seed = 2.0 * float3(Rand(seed.xy), Rand(seed.yz), Rand(seed.zx)) - 1;
-    while (dot(seed, seed) > 1.0) {
-        seed = 2.0 * float3(Rand(seed.xy), Rand(seed.yz), Rand(seed.zx)) - 1;
-    }
-    return seed;
 }
 
 float3 GetHitPoint (Ray ray, float t) {
@@ -61,4 +58,4 @@ bool HitSphere (Ray ray, SphereData sphere, float min_t, float max_t, out RayHit
     return false;
 }
 
-#endif // RAY_TRACING_INCLUDED
+#endif // RAY_TRACING_STRUCT_INCLUDED

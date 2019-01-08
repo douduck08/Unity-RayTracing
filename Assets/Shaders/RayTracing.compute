@@ -2,11 +2,14 @@
 #pragma kernel RayTracing
 #pragma kernel NormalizeSamples
 
-#include "RayTracing.cginc"
+#include "RayTracingCommon.cginc"
+#include "RayTracingStruct.cginc"
 
 RWTexture2D<float4> result;
 float4 renderParameter;
 float4x4 cameraRayParameter;
+
+RWStructuredBuffer<Ray> rayBuffer;
 
 int sphereNumber;
 StructuredBuffer<SphereData> sphereBuffer;
@@ -28,7 +31,7 @@ bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
         }
     }
     if (hit_something) {
-        color = sphereBuffer[sphere_id].color.rgb * 0.9; // TODO: metallic
+        color = sphereBuffer[sphere_id].color.rgb; // TODO: metallic
         next_ray = CreateRay(hit.position, hit.normal + RandInUnitSphere (hit.normal));
     } else {
         color = float3(0.5, 0.7, 1);
@@ -57,19 +60,40 @@ float3 GammaToLinearSpace (float3 sRGB) {
 
 [numthreads(8,8,1)]
 void InitCameraRays (uint3 id : SV_DispatchThreadID) {
+    uint width, height;
+    result.GetDimensions(width, height);
 
+    int rayIndex = (id.x + id.y * width) + (width * height * id.z);
+    float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
+
+    Ray ray = CreateCameraRay (uv);
+    rayBuffer[rayIndex] = ray;
 }
 
 [numthreads(8,8,1)]
 void RayTracing (uint3 id : SV_DispatchThreadID) {
+    uint width, height;
+    result.GetDimensions(width, height);
+
+    int rayIndex = (id.x + id.y * width) + (width * height * id.z);
     float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
 
-    float3 color = 0;
-    color += GetColorAt(uv);
-    color += GetColorAt(uv + float2(renderParameter.z * 0.5, 0));
-    color += GetColorAt(uv + float2(0, renderParameter.w * 0.5));
-    color += GetColorAt(uv + float2(renderParameter.z * 0.5, renderParameter.w * 0.5));
-    color = color * 0.25;
+    float3 color = 1;
+    // color += GetColorAt(uv);
+    // color += GetColorAt(uv + float2(renderParameter.z * 0.5, 0));
+    // color += GetColorAt(uv + float2(0, renderParameter.w * 0.5));
+    // color += GetColorAt(uv + float2(renderParameter.z * 0.5, renderParameter.w * 0.5));
+    // color = color * 0.25;
+
+    Ray ray = rayBuffer[rayIndex];
+    bool need_sample = true;
+    int depth;
+    float3 sample_color;
+    while (need_sample && depth < 50) {
+        need_sample = SampleColor (ray, /*out*/sample_color, /*out*/ray);
+        color *= sample_color;
+        depth += 1;
+    }
 
     color = GammaToLinearSpace(color);
 

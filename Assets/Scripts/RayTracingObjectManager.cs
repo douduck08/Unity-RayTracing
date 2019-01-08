@@ -2,17 +2,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public struct Ray {
+    public Vector3 origin;
+    public float pad0;
+    public Vector3 direction;
+    public float pad1;
+    public Vector3 color;
+    public float pad2;
+}
+
 public struct SphereData {
     public Vector3 position;
     public float radius;
     public Color color;
 }
 
-public static class RayTracingObjectDataSize {
+public static class StructDataSize {
+    public const int Ray = 48;
     public const int Sphere = 32;
 }
 
 public class RayTracingObjectManager {
+
+    public const int MAX_OBJECT_COUNT = 1000;
 
     #region singleton part
     static RayTracingObjectManager _instance;

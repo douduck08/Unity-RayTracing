@@ -191,7 +191,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 693ab85d8169a4a4aacd1d947108a154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rayTracingShader: {fileID: 7200000, guid: fc29577627dd9b6459eea72588dd59b1, type: 3}
+  renderTextureWidth: 2048
+  renderTextureHeight: 2048
+  superSampling: 8
+  rayTracingKernals: {fileID: 7200000, guid: fc29577627dd9b6459eea72588dd59b1, type: 3}
 --- !u!20 &282840813
 Camera:
   m_ObjectHideFlags: 0
@@ -311,7 +314,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: {r: 1, g: 1, b: 1, a: 1}
-  radius: 50
+  radius: 500
 --- !u!4 &1299172416
 Transform:
   m_ObjectHideFlags: 0
@@ -319,7 +322,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1299172414}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -51, z: 5}
+  m_LocalPosition: {x: 0, y: -501, z: 5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
