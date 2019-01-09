@@ -92,11 +92,13 @@ void NormalizeSamples (uint3 id : SV_DispatchThreadID) {
         color += rayBuffer[rayIndex].color;
         samples += 1;
     }
-    
+
     if (samples > 0) {
         color /= samples;
         // color = GammaToLinearSpace(color);
     }
+
+    color = result[id.xy].rgb * 0.9 + color * 0.1;  // simple taa
 
     result[id.xy] = float4(color, 1);
 }

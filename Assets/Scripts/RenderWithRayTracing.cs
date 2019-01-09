@@ -11,7 +11,8 @@ public class RenderWithRayTracing : MonoBehaviour {
     [SerializeField] ComputeShader rayTracingKernals;
 
     Camera renderCamera;
-    RenderTexture renderTarget;
+    RenderTexture renderResult;
+    RenderTexture historyResult;
 
     Vector3[] frustumCorners = new Vector3[4];
     Vector4 renderParameter;
@@ -24,6 +25,7 @@ public class RenderWithRayTracing : MonoBehaviour {
     ComputeBuffer rayBuffer;
     ComputeBuffer sphereBuffer;
 
+    // initializing part
     void OnEnable () {
         renderCamera = GetComponent<Camera> ();
 
@@ -31,12 +33,15 @@ public class RenderWithRayTracing : MonoBehaviour {
         rayTracingKernelID = rayTracingKernals.FindKernel ("RayTracing");
         normalizeSamplesKernelID = rayTracingKernals.FindKernel ("NormalizeSamples");
 
-        renderTarget = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
-        renderTarget.enableRandomWrite = true;
-        renderTarget.Create ();
-        rayTracingKernals.SetTexture (initCameraRaysKernelID, "result", renderTarget);
-        rayTracingKernals.SetTexture (rayTracingKernelID, "result", renderTarget);
-        rayTracingKernals.SetTexture (normalizeSamplesKernelID, "result", renderTarget);
+        renderResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
+        renderResult.enableRandomWrite = true;
+        renderResult.Create ();
+        rayTracingKernals.SetTexture (initCameraRaysKernelID, "result", renderResult);
+        rayTracingKernals.SetTexture (rayTracingKernelID, "result", renderResult);
+        rayTracingKernals.SetTexture (normalizeSamplesKernelID, "result", renderResult);
+
+        historyResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
+        historyResult.Create ();
 
         rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, StructDataSize.Ray);
         rayTracingKernals.SetBuffer (initCameraRaysKernelID, "rayBuffer", rayBuffer);
@@ -52,7 +57,7 @@ public class RenderWithRayTracing : MonoBehaviour {
         if (sphereBuffer != null) sphereBuffer.Release ();
     }
 
-    // render pipeline
+    // renderint part
     void OnPreRender () {
         UpdateKernalParameters ();
 
@@ -67,12 +72,12 @@ public class RenderWithRayTracing : MonoBehaviour {
     }
 
     void OnRenderImage (RenderTexture source, RenderTexture dest) {
-        Graphics.Blit (renderTarget, dest);
+        Graphics.Blit (renderResult, dest);
     }
 
     // internal methods
     void UpdateKernalParameters () {
-        renderParameter = new Vector4 (renderTarget.width, renderTarget.height, 1f / renderTarget.width, 1f / renderTarget.height);
+        renderParameter = new Vector4 (renderResult.width, renderResult.height, 1f / renderResult.width, 1f / renderResult.height);
         rayTracingKernals.SetVector ("renderParameter", renderParameter);
 
         renderCamera.CalculateFrustumCorners (new Rect (0, 0, 1, 1), renderCamera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);

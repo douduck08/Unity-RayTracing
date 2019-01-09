@@ -73,9 +73,7 @@ public class RayTracingObjectManager {
 
         sphereDatas = new SphereData[spheres.Count];
         for (int i = 0; i < spheres.Count; i++) {
-            sphereDatas[i].position = spheres[i].transform.position;
-            sphereDatas[i].radius = spheres[i].radius;
-            sphereDatas[i].color = spheres[i].color;
+            sphereDatas[i] = spheres[i].GetSphereData ();
         }
         isDirty = false;
     }
