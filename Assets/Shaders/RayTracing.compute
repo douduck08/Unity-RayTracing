@@ -1,10 +1,13 @@
 ﻿#pragma kernel InitCameraRays
-#pragma kernel RayTracing
+#pragma kernel TraceLambertian
 #pragma kernel NormalizeSamples
 
 #include "UnityCG.cginc"
 #include "RayTracingCommon.cginc"
 #include "RayTracingStruct.cginc"
+
+#define MIN_RAY_DISTANCE 0.001
+#define MAX_RAY_DISTANCE 1000.0
 
 RWTexture2D<float4> result;
 float4 renderParameter;
@@ -19,24 +22,29 @@ Ray CreateCameraRay (float2 uv) {
     return CreateRay(cameraRayParameter[0].xyz, cameraRayParameter[1].xyz + uv.x * cameraRayParameter[2].xyz + uv.y * cameraRayParameter[3].xyz);
 }
 
-bool SampleColor (Ray ray, out float3 color, out Ray next_ray) {
+float3 SampleEnvColor (float3 direction) {
+    return float3(0.5, 0.7, 1);
+}
+
+bool SampleColor (inout Ray ray, out Ray scattered_ray) {
     RayHit hit, tmp_hit;
-    hit.t = 1000.0;
+    hit.t = MAX_RAY_DISTANCE;
+
     bool hit_something = false;
     int sphere_id;
     for (int i = 0; i < sphereNumber; i++) {
-        if (HitSphere(ray, sphereBuffer[i], 0.001, hit.t, /*out*/tmp_hit)) {
+        if (ray.HitSphere(sphereBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) {
             hit_something = true;
-            hit = tmp_hit;
             sphere_id = i;
         }
     }
+
     if (hit_something) {
-        color = sphereBuffer[sphere_id].color.rgb * 0.9; // TODO: metallic
-        next_ray = CreateRay(hit.position, hit.normal + RandInUnitSphere (hit.normal));
+        // hit_something = ScatterLambertian(ray, hit, /*out*/scattered_ray);
+        hit_something = ScatterReflection(ray, hit, /*out*/scattered_ray);
     } else {
-        color = float3(0.5, 0.7, 1);
-        next_ray = (Ray)0;
+        scattered_ray = (Ray)0;
+        scattered_ray.color = ray.color * SampleEnvColor(ray.direction);
     }
     return hit_something;
 }
@@ -55,7 +63,7 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
 }
 
 [numthreads(8,8,1)]
-void RayTracing (uint3 id : SV_DispatchThreadID) {
+void TraceLambertian (uint3 id : SV_DispatchThreadID) {
     uint width, height;
     result.GetDimensions(width, height);
 
@@ -63,16 +71,17 @@ void RayTracing (uint3 id : SV_DispatchThreadID) {
     float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
 
     Ray ray = rayBuffer[rayIndex];
-    bool need_sample = true;
     int depth;
-    float3 color = ray.color;
-    float3 sample_color;
-    while (need_sample && depth < 50) {
-        need_sample = SampleColor (ray, /*out*/sample_color, /*out*/ray);
-        color *= sample_color;
+    bool hit_something = true;
+    while (hit_something && depth < 50) {
+        hit_something = SampleColor (ray, /*out*/ray);
         depth += 1;
     }
-    ray.color = color;
+
+    if (depth > 49) {
+        // over the max bounces
+        ray.color = 0;
+    }
 
     rayBuffer[rayIndex] = ray;
 }
@@ -98,7 +107,7 @@ void NormalizeSamples (uint3 id : SV_DispatchThreadID) {
         // color = GammaToLinearSpace(color);
     }
 
-    color = result[id.xy].rgb * 0.9 + color * 0.1;  // simple taa
+    color = lerp(color, result[id.xy].rgb, 0.9);  // simple taa
 
     result[id.xy] = float4(color, 1);
 }

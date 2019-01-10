@@ -4,11 +4,8 @@ using UnityEngine;
 
 public struct Ray {
     public Vector3 origin;
-    public float pad0;
     public Vector3 direction;
-    public float pad1;
     public Vector3 color;
-    public float pad2;
 }
 
 public struct SphereData {
@@ -18,7 +15,7 @@ public struct SphereData {
 }
 
 public static class StructDataSize {
-    public const int Ray = 48;
+    public const int Ray = 36;
     public const int Sphere = 32;
 }
 

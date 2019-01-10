@@ -19,7 +19,7 @@ public class RenderWithRayTracing : MonoBehaviour {
     Matrix4x4 cameraRayParameter;
 
     int initCameraRaysKernelID;
-    int rayTracingKernelID;
+    int traceLambertianKernelID;
     int normalizeSamplesKernelID;
 
     ComputeBuffer rayBuffer;
@@ -30,14 +30,14 @@ public class RenderWithRayTracing : MonoBehaviour {
         renderCamera = GetComponent<Camera> ();
 
         initCameraRaysKernelID = rayTracingKernals.FindKernel ("InitCameraRays");
-        rayTracingKernelID = rayTracingKernals.FindKernel ("RayTracing");
+        traceLambertianKernelID = rayTracingKernals.FindKernel ("TraceLambertian");
         normalizeSamplesKernelID = rayTracingKernals.FindKernel ("NormalizeSamples");
 
         renderResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
         renderResult.enableRandomWrite = true;
         renderResult.Create ();
         rayTracingKernals.SetTexture (initCameraRaysKernelID, "result", renderResult);
-        rayTracingKernals.SetTexture (rayTracingKernelID, "result", renderResult);
+        rayTracingKernals.SetTexture (traceLambertianKernelID, "result", renderResult);
         rayTracingKernals.SetTexture (normalizeSamplesKernelID, "result", renderResult);
 
         historyResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
@@ -45,11 +45,11 @@ public class RenderWithRayTracing : MonoBehaviour {
 
         rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, StructDataSize.Ray);
         rayTracingKernals.SetBuffer (initCameraRaysKernelID, "rayBuffer", rayBuffer);
-        rayTracingKernals.SetBuffer (rayTracingKernelID, "rayBuffer", rayBuffer);
+        rayTracingKernals.SetBuffer (traceLambertianKernelID, "rayBuffer", rayBuffer);
         rayTracingKernals.SetBuffer (normalizeSamplesKernelID, "rayBuffer", rayBuffer);
 
         sphereBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Sphere);
-        rayTracingKernals.SetBuffer (rayTracingKernelID, "sphereBuffer", sphereBuffer);
+        rayTracingKernals.SetBuffer (traceLambertianKernelID, "sphereBuffer", sphereBuffer);
     }
 
     void OnDisable () {
@@ -67,7 +67,7 @@ public class RenderWithRayTracing : MonoBehaviour {
 
     void OnRenderObject () {
         rayTracingKernals.Dispatch (initCameraRaysKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
-        rayTracingKernals.Dispatch (rayTracingKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
+        rayTracingKernals.Dispatch (traceLambertianKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
         rayTracingKernals.Dispatch (normalizeSamplesKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), 1);
     }
 
