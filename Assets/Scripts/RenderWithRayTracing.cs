@@ -19,7 +19,7 @@ public class RenderWithRayTracing : MonoBehaviour {
     Matrix4x4 cameraRayParameter;
 
     int initCameraRaysKernelID;
-    int traceLambertianKernelID;
+    int rayTraceKernelID;
     int normalizeSamplesKernelID;
 
     ComputeBuffer rayBuffer;
@@ -30,14 +30,14 @@ public class RenderWithRayTracing : MonoBehaviour {
         renderCamera = GetComponent<Camera> ();
 
         initCameraRaysKernelID = rayTracingKernals.FindKernel ("InitCameraRays");
-        traceLambertianKernelID = rayTracingKernals.FindKernel ("TraceLambertian");
+        rayTraceKernelID = rayTracingKernals.FindKernel ("RayTrace");
         normalizeSamplesKernelID = rayTracingKernals.FindKernel ("NormalizeSamples");
 
         renderResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
         renderResult.enableRandomWrite = true;
         renderResult.Create ();
         rayTracingKernals.SetTexture (initCameraRaysKernelID, "result", renderResult);
-        rayTracingKernals.SetTexture (traceLambertianKernelID, "result", renderResult);
+        rayTracingKernals.SetTexture (rayTraceKernelID, "result", renderResult);
         rayTracingKernals.SetTexture (normalizeSamplesKernelID, "result", renderResult);
 
         historyResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
@@ -45,11 +45,11 @@ public class RenderWithRayTracing : MonoBehaviour {
 
         rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, StructDataSize.Ray);
         rayTracingKernals.SetBuffer (initCameraRaysKernelID, "rayBuffer", rayBuffer);
-        rayTracingKernals.SetBuffer (traceLambertianKernelID, "rayBuffer", rayBuffer);
+        rayTracingKernals.SetBuffer (rayTraceKernelID, "rayBuffer", rayBuffer);
         rayTracingKernals.SetBuffer (normalizeSamplesKernelID, "rayBuffer", rayBuffer);
 
         sphereBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Sphere);
-        rayTracingKernals.SetBuffer (traceLambertianKernelID, "sphereBuffer", sphereBuffer);
+        rayTracingKernals.SetBuffer (rayTraceKernelID, "sphereBuffer", sphereBuffer);
     }
 
     void OnDisable () {
@@ -67,7 +67,7 @@ public class RenderWithRayTracing : MonoBehaviour {
 
     void OnRenderObject () {
         rayTracingKernals.Dispatch (initCameraRaysKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
-        rayTracingKernals.Dispatch (traceLambertianKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
+        rayTracingKernals.Dispatch (rayTraceKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
         rayTracingKernals.Dispatch (normalizeSamplesKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), 1);
     }
 
@@ -82,9 +82,9 @@ public class RenderWithRayTracing : MonoBehaviour {
 
         renderCamera.CalculateFrustumCorners (new Rect (0, 0, 1, 1), renderCamera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
         cameraRayParameter.SetRow (0, transform.position);
-        cameraRayParameter.SetRow (1, Vector3.Normalize (frustumCorners[0]));
-        cameraRayParameter.SetRow (2, Vector3.Normalize (frustumCorners[3]) - Vector3.Normalize (frustumCorners[0]));
-        cameraRayParameter.SetRow (3, Vector3.Normalize (frustumCorners[1]) - Vector3.Normalize (frustumCorners[0]));
+        cameraRayParameter.SetRow (1, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[0])));
+        cameraRayParameter.SetRow (2, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[3]) - Vector3.Normalize (frustumCorners[0])));
+        cameraRayParameter.SetRow (3, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[1]) - Vector3.Normalize (frustumCorners[0])));
         rayTracingKernals.SetMatrix ("cameraRayParameter", cameraRayParameter);
     }
 }

@@ -11,12 +11,13 @@ public struct Ray {
 public struct SphereData {
     public Vector3 position;
     public float radius;
-    public Color color;
+    public Color albedo;
+    public Color specular;
 }
 
 public static class StructDataSize {
     public const int Ray = 36;
-    public const int Sphere = 32;
+    public const int Sphere = 48;
 }
 
 public class RayTracingObjectManager {

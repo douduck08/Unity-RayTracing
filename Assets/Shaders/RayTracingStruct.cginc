@@ -3,19 +3,21 @@
 
 #include "RayTracingCommon.cginc"
 
-#define BOUNCE_RATIO 0.9
+#define BOUNCE_RATIO 0.99
 
 struct SphereData {
     float3 position;
     float radius;
-    float4 color;
+    float4 albedo;
+    float4 specular;
 };
 
 struct RayHit {
     float3 position;
     float t;
     float3 normal;
-    float3 albedo;
+    float4 albedo;
+    float4 specular;
 };
 
 struct Ray {
@@ -40,7 +42,8 @@ struct Ray {
                 hit.t = t;
                 hit.position = GetHitPoint(t);
                 hit.normal = normalize(hit.position - sphere.position);
-                hit.albedo = sphere.color;
+                hit.albedo = sphere.albedo;
+                hit.specular = sphere.specular;
                 return true;
             }
         }
@@ -69,15 +72,13 @@ bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
     scattered_ray = CreateRay(
         hit.position + 0.001 * hit.normal,
         hit.normal + RandInUnitSphere (hit.normal),
-        ray.color * hit.albedo * BOUNCE_RATIO
+        ray.color * hit.albedo.rgb * BOUNCE_RATIO
     );
     return true;
 }
 
 bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
-    // Fuzz should be a material parameter.
-    const float fuzz = 0.01;
-
+    float fuzz = hit.specular.a;
     float3 reflection = reflect(normalize(ray.direction), hit.normal);
     reflection = reflection + fuzz * RandInUnitSphere (hit.normal);
 
@@ -86,7 +87,7 @@ bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
         scattered_ray = CreateRay(
             hit.position + 0.001 * hit.normal,
             reflection,
-            ray.color * hit.albedo * BOUNCE_RATIO
+            ray.color * hit.specular.rgb * BOUNCE_RATIO
         );
     } else {
         scattered_ray = (Ray)0;

@@ -1,5 +1,5 @@
 ﻿#pragma kernel InitCameraRays
-#pragma kernel TraceLambertian
+#pragma kernel RayTrace
 #pragma kernel NormalizeSamples
 
 #include "UnityCG.cginc"
@@ -26,7 +26,7 @@ float3 SampleEnvColor (float3 direction) {
     return float3(0.5, 0.7, 1);
 }
 
-bool SampleColor (inout Ray ray, out Ray scattered_ray) {
+bool SampleColor (inout Ray ray, out Ray scattered_ray, int reflectionMode) {
     RayHit hit, tmp_hit;
     hit.t = MAX_RAY_DISTANCE;
 
@@ -40,8 +40,11 @@ bool SampleColor (inout Ray ray, out Ray scattered_ray) {
     }
 
     if (hit_something) {
-        // hit_something = ScatterLambertian(ray, hit, /*out*/scattered_ray);
-        hit_something = ScatterReflection(ray, hit, /*out*/scattered_ray);
+        if (reflectionMode) {
+            hit_something = ScatterReflection(ray, hit, /*out*/scattered_ray);
+        } else {
+            hit_something = ScatterLambertian(ray, hit, /*out*/scattered_ray);
+        }
     } else {
         scattered_ray = (Ray)0;
         scattered_ray.color = ray.color * SampleEnvColor(ray.direction);
@@ -63,18 +66,20 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
 }
 
 [numthreads(8,8,1)]
-void TraceLambertian (uint3 id : SV_DispatchThreadID) {
+void RayTrace (uint3 id : SV_DispatchThreadID) {
     uint width, height;
     result.GetDimensions(width, height);
 
     int rayIndex = (id.x + id.y * width) + (width * height * id.z);
     float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
 
+    int reflectionMode = id.z & 1;
+
     Ray ray = rayBuffer[rayIndex];
     int depth;
     bool hit_something = true;
     while (hit_something && depth < 50) {
-        hit_something = SampleColor (ray, /*out*/ray);
+        hit_something = SampleColor (ray, /*out*/ray, reflectionMode);
         depth += 1;
     }
 
