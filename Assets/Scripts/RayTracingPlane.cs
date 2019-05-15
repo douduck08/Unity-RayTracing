@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent (typeof (MeshRenderer))]
-public class RayTracingSphere : MonoBehaviour {
+public class RayTracingPlane : MonoBehaviour {
 
     [SerializeField] MaterialType materialType = MaterialType.Diffuse;
     [SerializeField] Color color = Color.white;
@@ -43,10 +43,10 @@ public class RayTracingSphere : MonoBehaviour {
         meshRenderer.SetPropertyBlock (materialPropertyBlock);
     }
 
-    public SphereData GetData () {
-        SphereData result;
+    public PlaneData GetData () {
+        PlaneData result;
         result.position = transform.position;
-        result.radius = transform.lossyScale.x / 2;
+        result.normal = transform.up;
         result.albedo = Color.Lerp (color, new Color (0.04f, 0.04f, 0.04f), metallic);
         result.albedo.a = color.a;
         result.specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic);;

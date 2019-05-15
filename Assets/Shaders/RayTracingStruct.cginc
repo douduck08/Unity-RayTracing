@@ -1,23 +1,35 @@
 #ifndef RAY_TRACING_STRUCT_INCLUDED
 #define RAY_TRACING_STRUCT_INCLUDED
 
-#include "RayTracingCommon.cginc"
+#include "Common.cginc"
 
-#define BOUNCE_RATIO 0.99
+#define BOUNCE_RATIO 0.5
+#define DIFFUSE_MATERIAL 1
+#define GLOOSY_MATERIAL 2
 
 struct SphereData {
     float3 position;
     float radius;
     float4 albedo;
     float4 specular;
+    int material;
+};
+
+struct PlaneData {
+    float3 position;
+    float3 normal;
+    float4 albedo;
+    float4 specular;
+    int material;
 };
 
 struct RayHit {
     float3 position;
     float t;
-    float3 normal;
     float4 albedo;
     float4 specular;
+    float3 normal;
+    int material;
 };
 
 struct Ray {
@@ -44,18 +56,36 @@ struct Ray {
                 hit.normal = normalize(hit.position - sphere.position);
                 hit.albedo = sphere.albedo;
                 hit.specular = sphere.specular;
+                hit.material = sphere.material;
                 return true;
             }
         }
-        return false;
-        // hit is an inout parameter, will keep value when hit no thing.
+        return false; // hit is an inout parameter, will keep value when hit nothing.
+    }
+
+    bool HitPlane (PlaneData plane, float min_t, float max_t, inout RayHit hit) {
+        float NDotD = dot(plane.normal, direction);
+        if (NDotD < -1e-6) { 
+            float3 p0 = plane.position - origin;
+            float t = dot(p0, plane.normal) / NDotD;
+            if (t >= min_t && t < max_t) {
+                hit.t = t;
+                hit.position = GetHitPoint(t);
+                hit.normal = plane.normal;
+                hit.albedo = plane.albedo;
+                hit.specular = plane.specular;
+                hit.material = plane.material;
+                return true;
+            }
+        }
+        return false; // hit is an inout parameter, will keep value when hit nothing.
     }
 };
 
 Ray CreateRay (float3 origin, float3 direction) {
     Ray ray = (Ray)0;
     ray.origin = origin;
-    ray.direction = direction;
+    ray.direction = normalize(direction);
     ray.color = 1;
     return ray;
 }
@@ -63,16 +93,16 @@ Ray CreateRay (float3 origin, float3 direction) {
 Ray CreateRay (float3 origin, float3 direction, float3 color) {
     Ray ray = (Ray)0;
     ray.origin = origin;
-    ray.direction = direction;
+    ray.direction = normalize(direction);
     ray.color = color;
     return ray;
 }
 
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
     scattered_ray = CreateRay(
-        hit.position + 0.001 * hit.normal,
-        hit.normal + RandInUnitSphere (hit.normal),
-        ray.color * hit.albedo.rgb * BOUNCE_RATIO
+    hit.position + 0.001 * hit.normal,
+    hit.normal + RandInUnitSphere (hit.normal + hit.position),
+    ray.color * hit.albedo.rgb * BOUNCE_RATIO
     );
     return true;
 }
@@ -80,19 +110,24 @@ bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
 bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     float fuzz = hit.specular.a;
     float3 reflection = reflect(normalize(ray.direction), hit.normal);
-    reflection = reflection + fuzz * RandInUnitSphere (hit.normal);
+    reflection = reflection + fuzz * RandInUnitSphere (hit.normal + hit.position);
 
-    bool outside = dot(reflection, hit.normal) > 0;
-    if (outside) {
-        scattered_ray = CreateRay(
-            hit.position + 0.001 * hit.normal,
-            reflection,
-            ray.color * hit.specular.rgb * BOUNCE_RATIO
-        );
-    } else {
-        scattered_ray = (Ray)0;
+    scattered_ray = CreateRay(
+    hit.position + 0.001 * hit.normal,
+    reflection,
+    ray.color * hit.specular.rgb * BOUNCE_RATIO
+    );
+    return dot(reflection, hit.normal) > 0;
+}
+
+bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
+    if (hit.material == DIFFUSE_MATERIAL) {
+        return ScatterLambertian(ray, hit, scattered_ray);
     }
-    return outside;
+    if (hit.material == GLOOSY_MATERIAL) {
+        return ScatterReflection(ray, hit, scattered_ray);
+    }
+    return false;
 }
 
 #endif // RAY_TRACING_STRUCT_INCLUDED

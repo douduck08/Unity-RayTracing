@@ -3,49 +3,56 @@
 #pragma kernel NormalizeSamples
 
 #include "UnityCG.cginc"
-#include "RayTracingCommon.cginc"
+#include "Common.cginc"
 #include "RayTracingStruct.cginc"
 
 #define MIN_RAY_DISTANCE 0.001
 #define MAX_RAY_DISTANCE 1000.0
+#define MAX_RAY_STEP 50
 
 RWTexture2D<float4> result;
-float4 renderParameter;
-float4x4 cameraRayParameter;
-
 RWStructuredBuffer<Ray> rayBuffer;
+float4x4 cameraFrustumCorners;
 
 int sphereNumber;
 StructuredBuffer<SphereData> sphereBuffer;
 
-Ray CreateCameraRay (float2 uv) {
-    return CreateRay(cameraRayParameter[0].xyz, cameraRayParameter[1].xyz + uv.x * cameraRayParameter[2].xyz + uv.y * cameraRayParameter[3].xyz);
+int planeNumber;
+StructuredBuffer<PlaneData> planeBuffer;
+
+bool RayCast(Ray ray, out RayHit hit) {
+    hit = (RayHit)0;
+    hit.t = MAX_RAY_DISTANCE;
+
+    bool hit_something = false;
+    int i = 0;
+    for (i = 0; i < sphereNumber; i++) {
+        if (ray.HitSphere(sphereBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
+    }
+    for (i = 0; i < planeNumber; i++) {
+        if (ray.HitPlane(planeBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
+    }
+    return hit_something;
 }
 
 float3 SampleEnvColor (float3 direction) {
     return float3(0.5, 0.7, 1);
 }
 
-bool SampleColor (inout Ray ray, out Ray scattered_ray, int reflectionMode) {
-    RayHit hit, tmp_hit;
-    hit.t = MAX_RAY_DISTANCE;
-
-    bool hit_something = false;
-    int sphere_id;
-    for (int i = 0; i < sphereNumber; i++) {
-        if (ray.HitSphere(sphereBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) {
-            hit_something = true;
-            sphere_id = i;
-        }
-    }
+bool SampleColor (Ray ray, out Ray scattered_ray) {
+    RayHit hit;
+    bool hit_something = RayCast(ray, /*out*/hit);
 
     if (hit_something) {
-        if (reflectionMode) {
-            hit_something = ScatterReflection(ray, hit, /*out*/scattered_ray);
-        } else {
-            hit_something = ScatterLambertian(ray, hit, /*out*/scattered_ray);
-        }
-    } else {
+        hit_something = Scatter(ray, hit, /*out*/scattered_ray);
+        // ** debug **
+        // hit_something = false;
+        // scattered_ray = (Ray)0;
+        // scattered_ray.color = hit.normal * 0.5 + 0.5;
+        // scattered_ray.color = hit.position;
+        // ** debug **
+    }
+    else {
         scattered_ray = (Ray)0;
         scattered_ray.color = ray.color * SampleEnvColor(ray.direction);
     }
@@ -57,11 +64,16 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
     uint width, height;
     result.GetDimensions(width, height);
 
-    int rayIndex = (id.x + id.y * width) + (width * height * id.z);
-    float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
-    uv += Rand(uv + _SinTime.x) * renderParameter.zw;
+    int rayIndex = id.x + width * id.y + width * height * id.z;
+    float2 texelSize = rcp(float2(width, height));
+    float2 uv = float2(id.x * texelSize.x, id.y * texelSize.y);
 
-    Ray ray = CreateCameraRay (uv);
+    float r = Rand(float2(sin(_Time.x + id.z), sin(_Time.y + id.z)));
+    uv += Rand(uv + r) * texelSize;
+
+    float3 dir = cameraFrustumCorners[0].xyz + uv.x * (cameraFrustumCorners[3].xyz - cameraFrustumCorners[0].xyz) + uv.y * (cameraFrustumCorners[1].xyz - cameraFrustumCorners[0].xyz);
+
+    Ray ray = CreateRay(_WorldSpaceCameraPos, dir);
     rayBuffer[rayIndex] = ray;
 }
 
@@ -69,21 +81,19 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
 void RayTrace (uint3 id : SV_DispatchThreadID) {
     uint width, height;
     result.GetDimensions(width, height);
-
-    int rayIndex = (id.x + id.y * width) + (width * height * id.z);
-    float2 uv = float2(renderParameter.z * id.x, renderParameter.w * id.y);
-
-    int reflectionMode = id.z & 1;
+    
+    int rayIndex = id.x + width * id.y + width * height * id.z;
+    float2 texelSize = rcp(float2(width, height));
 
     Ray ray = rayBuffer[rayIndex];
     int depth;
     bool hit_something = true;
-    while (hit_something && depth < 50) {
-        hit_something = SampleColor (ray, /*out*/ray, reflectionMode);
+    while (hit_something && depth < MAX_RAY_STEP) {
+        hit_something = SampleColor (ray, /*out*/ray);
         depth += 1;
     }
 
-    if (depth > 49) {
+    if (depth >= MAX_RAY_STEP) {
         // over the max bounces
         ray.color = 0;
     }
@@ -112,7 +122,7 @@ void NormalizeSamples (uint3 id : SV_DispatchThreadID) {
         // color = GammaToLinearSpace(color);
     }
 
-    color = lerp(color, result[id.xy].rgb, 0.9);  // simple taa
+    // color = lerp(color, result[id.xy].rgb, 0.9);  // simple taa
 
     result[id.xy] = float4(color, 1);
 }

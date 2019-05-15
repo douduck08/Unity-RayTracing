@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent (typeof (Camera))]
-public class RenderWithRayTracing : MonoBehaviour {
+public class RayTracingCamera : MonoBehaviour {
 
     [SerializeField] int renderTextureWidth = 1024;
     [SerializeField] int renderTextureHeight = 1024;
@@ -15,8 +15,7 @@ public class RenderWithRayTracing : MonoBehaviour {
     RenderTexture historyResult;
 
     Vector3[] frustumCorners = new Vector3[4];
-    Vector4 renderParameter;
-    Matrix4x4 cameraRayParameter;
+    Matrix4x4 cameraFrustumCorners;
 
     int initCameraRaysKernelID;
     int rayTraceKernelID;
@@ -24,10 +23,12 @@ public class RenderWithRayTracing : MonoBehaviour {
 
     ComputeBuffer rayBuffer;
     ComputeBuffer sphereBuffer;
+    ComputeBuffer planeBuffer;
 
     // initializing part
     void OnEnable () {
         renderCamera = GetComponent<Camera> ();
+        renderCamera.cullingMask = 0;
 
         initCameraRaysKernelID = rayTracingKernals.FindKernel ("InitCameraRays");
         rayTraceKernelID = rayTracingKernals.FindKernel ("RayTrace");
@@ -50,6 +51,9 @@ public class RenderWithRayTracing : MonoBehaviour {
 
         sphereBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Sphere);
         rayTracingKernals.SetBuffer (rayTraceKernelID, "sphereBuffer", sphereBuffer);
+
+        planeBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Plane);
+        rayTracingKernals.SetBuffer (rayTraceKernelID, "planeBuffer", planeBuffer);
     }
 
     void OnDisable () {
@@ -57,18 +61,18 @@ public class RenderWithRayTracing : MonoBehaviour {
         if (sphereBuffer != null) sphereBuffer.Release ();
     }
 
-    // renderint part
+    // rendering part
     void OnPreRender () {
         UpdateKernalParameters ();
-
-        rayTracingKernals.SetInt ("sphereNumber", RayTracingObjectManager.instance.sphereNumber);
-        sphereBuffer.SetData (RayTracingObjectManager.instance.sphereDataArray);
+        UpdateComputeBuffer ();
     }
 
     void OnRenderObject () {
-        rayTracingKernals.Dispatch (initCameraRaysKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
-        rayTracingKernals.Dispatch (rayTraceKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), superSampling);
-        rayTracingKernals.Dispatch (normalizeSamplesKernelID, Mathf.CeilToInt (renderTextureWidth / 8.0f), Mathf.CeilToInt (renderTextureHeight / 8.0f), 1);
+        var x = Mathf.CeilToInt (renderTextureWidth / 8.0f);
+        var y = Mathf.CeilToInt (renderTextureHeight / 8.0f);
+        rayTracingKernals.Dispatch (initCameraRaysKernelID, x, y, superSampling);
+        rayTracingKernals.Dispatch (rayTraceKernelID, x, y, superSampling);
+        rayTracingKernals.Dispatch (normalizeSamplesKernelID, x, y, 1);
     }
 
     void OnRenderImage (RenderTexture source, RenderTexture dest) {
@@ -77,14 +81,24 @@ public class RenderWithRayTracing : MonoBehaviour {
 
     // internal methods
     void UpdateKernalParameters () {
-        renderParameter = new Vector4 (renderResult.width, renderResult.height, 1f / renderResult.width, 1f / renderResult.height);
-        rayTracingKernals.SetVector ("renderParameter", renderParameter);
-
         renderCamera.CalculateFrustumCorners (new Rect (0, 0, 1, 1), renderCamera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
-        cameraRayParameter.SetRow (0, transform.position);
-        cameraRayParameter.SetRow (1, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[0])));
-        cameraRayParameter.SetRow (2, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[3]) - Vector3.Normalize (frustumCorners[0])));
-        cameraRayParameter.SetRow (3, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[1]) - Vector3.Normalize (frustumCorners[0])));
-        rayTracingKernals.SetMatrix ("cameraRayParameter", cameraRayParameter);
+        cameraFrustumCorners.SetRow (0, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[0])));
+        cameraFrustumCorners.SetRow (1, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[1])));
+        cameraFrustumCorners.SetRow (2, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[2])));
+        cameraFrustumCorners.SetRow (3, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[3])));
+        rayTracingKernals.SetMatrix ("cameraFrustumCorners", cameraFrustumCorners);
+    }
+
+    void UpdateComputeBuffer () {
+        if (RayTracingObjectManager.instance.RebuildSphereArrayIfNeeded ()) {
+            var spheres = RayTracingObjectManager.instance.sphereArray;
+            sphereBuffer.SetData (spheres);
+            rayTracingKernals.SetInt ("sphereNumber", spheres.Length);
+        }
+        if (RayTracingObjectManager.instance.RebuildPlaneArrayIfNeeded ()) {
+            var planes = RayTracingObjectManager.instance.planeArray;
+            planeBuffer.SetData (planes);
+            rayTracingKernals.SetInt ("planeNumber", planes.Length);
+        }
     }
 }
