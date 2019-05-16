@@ -3,9 +3,11 @@
 
 #include "Common.cginc"
 
-#define BOUNCE_RATIO 0.5
 #define DIFFUSE_MATERIAL 1
 #define GLOOSY_MATERIAL 2
+
+#define BOUNCE_RATIO bounceRatio
+float bounceRatio;
 
 struct SphereData {
     float3 position;

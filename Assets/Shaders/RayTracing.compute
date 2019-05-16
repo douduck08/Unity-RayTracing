@@ -67,9 +67,7 @@ void InitCameraRays (uint3 id : SV_DispatchThreadID) {
     int rayIndex = id.x + width * id.y + width * height * id.z;
     float2 texelSize = rcp(float2(width, height));
     float2 uv = float2(id.x * texelSize.x, id.y * texelSize.y);
-
-    float r = Rand(float2(sin(_Time.x + id.z), sin(_Time.y + id.z)));
-    uv += Rand(uv + r) * texelSize;
+    uv += Hash2(id.xy + _Time.x * id.z) * texelSize;
 
     float3 dir = cameraFrustumCorners[0].xyz + uv.x * (cameraFrustumCorners[3].xyz - cameraFrustumCorners[0].xyz) + uv.y * (cameraFrustumCorners[1].xyz - cameraFrustumCorners[0].xyz);
 

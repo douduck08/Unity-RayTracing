@@ -154,7 +154,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   renderTextureWidth: 1024
   renderTextureHeight: 512
-  superSampling: 4
+  superSampling: 8
   rayTracingKernals: {fileID: 7200000, guid: fc29577627dd9b6459eea72588dd59b1, type: 3}
 --- !u!20 &282840813
 Camera:
@@ -260,10 +260,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fa5dc68e1c054e4e9bde19bf99ba817, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialType: 1
+  materialType: 2
   color: {r: 0, g: 0.17391205, b: 1, a: 1}
-  glossiness: 0.5
-  metallic: 0
+  glossiness: 0.7
+  metallic: 0.3
 --- !u!135 &356710279
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1086,10 +1086,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fa5dc68e1c054e4e9bde19bf99ba817, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialType: 1
+  materialType: 2
   color: {r: 1, g: 1, b: 0, a: 1}
-  glossiness: 0.5
-  metallic: 0
+  glossiness: 0.9
+  metallic: 0.2
 --- !u!135 &1734881138
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1194,10 +1194,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fa5dc68e1c054e4e9bde19bf99ba817, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  materialType: 1
+  materialType: 2
   color: {r: 1, g: 0.4484057, b: 0.0141509175, a: 1}
-  glossiness: 0.5
-  metallic: 0
+  glossiness: 0.7
+  metallic: 0.5
 --- !u!135 &2039228217
 SphereCollider:
   m_ObjectHideFlags: 0
