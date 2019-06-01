@@ -156,6 +156,10 @@ MonoBehaviour:
   renderTextureHeight: 512
   superSampling: 8
   rayTracingKernals: {fileID: 7200000, guid: fc29577627dd9b6459eea72588dd59b1, type: 3}
+  lightBounceRatio: 0.5
+  denoise: 0
+  denoiseExponent: 128
+  denoiseShader: {fileID: 4800000, guid: a75c74cff2669f5498862bc0fc7a0e8f, type: 3}
 --- !u!20 &282840813
 Camera:
   m_ObjectHideFlags: 0

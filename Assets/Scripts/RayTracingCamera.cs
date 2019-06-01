@@ -14,6 +14,12 @@ public class RayTracingCamera : MonoBehaviour {
     [Header ("Light Settings")]
     [SerializeField, Range (0f, 1f)] float lightBounceRatio = 0.5f;
 
+    [Header ("Other Settings")]
+    [SerializeField] bool denoise;
+    [SerializeField, Range (1f, 256f)] float denoiseExponent = 128f;
+    [SerializeField] Shader denoiseShader;
+    Material denoiseMaterial;
+
     Camera renderCamera;
     RenderTexture renderResult;
     RenderTexture historyResult;
@@ -94,7 +100,15 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void OnRenderImage (RenderTexture source, RenderTexture dest) {
-        Graphics.Blit (renderResult, dest);
+        if (denoise) {
+            if (denoiseMaterial == null) {
+                denoiseMaterial = new Material (denoiseShader);
+            }
+            denoiseMaterial.SetFloat ("_Exponent", denoiseExponent);
+            Graphics.Blit (renderResult, dest, denoiseMaterial);
+        } else {
+            Graphics.Blit (renderResult, dest);
+        }
     }
 
     // internal methods
