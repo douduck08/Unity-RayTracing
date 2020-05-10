@@ -2,8 +2,28 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+public struct Ray {
+    public Vector3 origin;
+    public Vector3 direction;
+    public Vector3 color;
+}
+
+
+public static class StructDataSize {
+    public const int Ray = 36;
+    public const int Sphere = 52;
+    public const int Plane = 60;
+}
+
+public enum MaterialType {
+    Diffuse = 1,
+    Gloosy = 2
+}
+
 [RequireComponent (typeof (Camera))]
 public class RayTracingCamera : MonoBehaviour {
+
+    public const int MAX_OBJECT_COUNT = 100;
 
     [Header ("Quality Settings")]
     [SerializeField] int renderTextureWidth = 1024;
@@ -65,10 +85,10 @@ public class RayTracingCamera : MonoBehaviour {
         rayTracingKernals.SetBuffer (rayTraceKernelID, "rayBuffer", rayBuffer);
         rayTracingKernals.SetBuffer (normalizeSamplesKernelID, "rayBuffer", rayBuffer);
 
-        sphereBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Sphere);
+        sphereBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, StructDataSize.Sphere);
         rayTracingKernals.SetBuffer (rayTraceKernelID, "sphereBuffer", sphereBuffer);
 
-        planeBuffer = new ComputeBuffer (RayTracingObjectManager.MAX_OBJECT_COUNT, StructDataSize.Plane);
+        planeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, StructDataSize.Plane);
         rayTracingKernals.SetBuffer (rayTraceKernelID, "planeBuffer", planeBuffer);
 
         UpdateLightParameters ();
@@ -126,15 +146,12 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void UpdateComputeBuffer () {
-        if (RayTracingObjectManager.instance.RebuildSphereArrayIfNeeded ()) {
-            var spheres = RayTracingObjectManager.instance.sphereArray;
-            sphereBuffer.SetData (spheres);
-            rayTracingKernals.SetInt ("sphereNumber", spheres.Length);
+        var count = 0;
+        if (RayTracingSphere.UpdateComputeBufferIfNeeded (ref sphereBuffer, out count)) {
+            rayTracingKernals.SetInt ("sphereNumber", count);
         }
-        if (RayTracingObjectManager.instance.RebuildPlaneArrayIfNeeded ()) {
-            var planes = RayTracingObjectManager.instance.planeArray;
-            planeBuffer.SetData (planes);
-            rayTracingKernals.SetInt ("planeNumber", planes.Length);
+        if (RayTracingPlane.UpdateComputeBufferIfNeeded (ref planeBuffer, out count)) {
+            rayTracingKernals.SetInt ("planeNumber", count);
         }
     }
 
@@ -158,9 +175,9 @@ public class RayTracingCamera : MonoBehaviour {
 
             // spherical -> cartesian, with r = 1
             output[j] = new Vector3 (
-                (float) (System.Math.Cos (phij) * System.Math.Sin (thetaj)),
-                (float) (zj),
-                (float) (System.Math.Sin (thetaj) * System.Math.Sin (phij))
+                (float)(System.Math.Cos (phij) * System.Math.Sin (thetaj)),
+                (float)(zj),
+                (float)(System.Math.Sin (thetaj) * System.Math.Sin (phij))
             );
         }
 

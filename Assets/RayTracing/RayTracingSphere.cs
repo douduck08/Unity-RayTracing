@@ -2,8 +2,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent (typeof (MeshRenderer))]
-public class RayTracingPlane : MonoBehaviour {
+public struct SphereData {
+    public Vector3 position; // 3
+    public float radius; // 1
+    public Color albedo; // 4
+    public Color specular; // 4
+    public int material; // 1
+}
+
+public class RayTracingSphere : RayTracingObjectBase<RayTracingSphere, SphereData>, IRayTracingObject<SphereData> {
+
+    // (3 + 1 + 4 + 4 + 1) * 4 = 13 * 4
+    public const int DATA_SIZE = 52;
 
     [SerializeField] MaterialType materialType = MaterialType.Diffuse;
     [SerializeField] Color color = Color.white;
@@ -16,17 +26,17 @@ public class RayTracingPlane : MonoBehaviour {
     void OnEnable () {
         Init ();
         UpdateMaterialPropertyBlock ();
-        RayTracingObjectManager.instance.AddObject (this);
+        AddObject (this);
     }
 
     void OnDisable () {
-        RayTracingObjectManager.instance.RemoveObject (this);
+        RemoveObject (this);
     }
 
     void OnValidate () {
         Init ();
         UpdateMaterialPropertyBlock ();
-        RayTracingObjectManager.instance.UpdateObject (this);
+        UpdateObject (this);
     }
 
     void Init () {
@@ -43,15 +53,15 @@ public class RayTracingPlane : MonoBehaviour {
         meshRenderer.SetPropertyBlock (materialPropertyBlock);
     }
 
-    public PlaneData GetData () {
-        PlaneData result;
+    public override SphereData GetData () {
+        SphereData result;
         result.position = transform.position;
-        result.normal = transform.up;
+        result.radius = transform.lossyScale.x / 2;
         result.albedo = Color.Lerp (color, new Color (0.04f, 0.04f, 0.04f), metallic);
         result.albedo.a = color.a;
-        result.specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic);;
+        result.specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic); ;
         result.specular.a = 1f - glossiness;
-        result.material = (int) materialType;
+        result.material = (int)materialType;
         return result;
     }
 }
