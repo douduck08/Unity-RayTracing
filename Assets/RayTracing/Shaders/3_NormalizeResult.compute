@@ -1,0 +1,56 @@
+﻿#pragma kernel CSMain
+
+#define THREAD_GROUP_SIZE_X 128
+#define THREAD_GROUP_SIZE_Y 1
+#define THREAD_GROUP_SIZE_Z 1
+
+#include "Common.cginc"
+#include "RayTracingStruct.cginc"
+
+// Buffers
+RWTexture2D<float4> _Result;
+RWStructuredBuffer<Ray> _RayBuffer;
+
+// Kernels
+[numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, THREAD_GROUP_SIZE_Z)]
+void CSMain (
+in uint3 dispatchThreadID : SV_DispatchThreadID, // DispatchThreadID  = dot(GroupID, numthreads) + GroupThreadId;
+in uint  groupIndex       : SV_GroupIndex, // uint GroupIndex = unique index of a thread inside a group
+in uint3 groupID          : SV_GroupID, // GroupID = index for each dimension inside a ThreadGroupCount
+in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices for each dimension inside a group of the current thread
+) {
+    uint width, height;
+    _Result.GetDimensions(width, height);
+
+    uint rayNumber, stride;
+    _RayBuffer.GetDimensions(rayNumber, stride);
+
+    uint firstIndex = dispatchThreadID.x + dispatchThreadID.y * width;
+    uint totalPixels = width * height;
+
+    float3 color = 0;
+    int samples = 0;
+    for (uint rayIndex = firstIndex; rayIndex < rayNumber; rayIndex += totalPixels) {
+        color += _RayBuffer[rayIndex].color;
+        samples += 1;
+    }
+
+    Ray ray = _RayBuffer[firstIndex];
+    ray.output += color;
+    ray.count += samples;
+    _RayBuffer[firstIndex] = ray;
+
+    color = 0;
+    if (ray.count > 0) {
+        color = ray.output / ray.count;
+        // color = ray.count / 1000;
+    }
+
+    // if (samples > 0) {
+        //     color /= samples;
+    // }
+
+    // color = GammaToLinearSpace(color);
+
+    _Result[dispatchThreadID.xy] = float4(color, 1);
+}

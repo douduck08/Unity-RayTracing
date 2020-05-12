@@ -2,30 +2,41 @@
 #define RAY_TRACING_COMMON_INCLUDED
 
 #define USE_SPHERICAL_FIBONACCI
-#ifndef USE_SPHERICAL_FIBONACCI
-RWStructuredBuffer<float3> sphericalSampleBuffer;
+#ifdef USE_SPHERICAL_FIBONACCI
+RWStructuredBuffer<float3> _SphericalSampleBuffer;
+int _SphericalSampleOffset;
 #endif
+
+uint GetIndex (uint3 id, uint width, uint height) {
+    return id.x + width * id.y + width * height * id.z;
+}
+
+float2 GetUV (uint3 id, uint width, uint height) {
+    float2 texelSize = rcp(float2(width, height));
+    float2 uv = float2(id.xy) + 0.5;
+    uv *= texelSize;
+    return uv;
+}
 
 float Hash (float2 seed) {
     return frac(sin(dot(seed, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-float Hash2 (float2 seed) {
+float2 Hash2 (float2 seed) {
     float x = frac(sin(dot(seed, float2(127.1, 311.7))) * 43758.5453);
     float y = frac(sin(dot(seed, float2(269.5, 183.3))) * 43758.5453);
     return float2(x, y);
 }
 
 float3 RandInUnitSphere (float3 seed) {
-#ifndef USE_SPHERICAL_FIBONACCI
-    seed = sphericalSampleBuffer[(Hash(seed.xy + seed.yz) * 392901) % 4096];
+#ifdef USE_SPHERICAL_FIBONACCI
+    seed = _SphericalSampleBuffer[(Hash(seed.xy + seed.yz) * 392901 + _SphericalSampleOffset) % 4096];
 #else
     seed = 2.0 * float3(Hash(seed.xy), Hash(seed.yz), Hash(seed.zx)) - 1;
     while (dot(seed, seed) > 1.0) {
         seed = 2.0 * float3(Hash(seed.xy), Hash(seed.yz), Hash(seed.zx)) - 1;
     }
 #endif
-
     return seed;
 }
 

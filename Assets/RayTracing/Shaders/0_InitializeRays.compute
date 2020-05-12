@@ -1,0 +1,44 @@
+﻿#pragma kernel CSMain
+
+#define THREAD_GROUP_SIZE_X 128
+#define THREAD_GROUP_SIZE_Y 1
+#define THREAD_GROUP_SIZE_Z 1
+
+#include "Common.cginc"
+#include "RayTracingStruct.cginc"
+
+// Buffers
+RWTexture2D<float4> _Result;
+RWStructuredBuffer<Ray> _RayBuffer;
+
+cbuffer CB {
+    float4 _WorldSpaceCameraPos;
+    float4x4 _CameraFrustumCorners;
+};
+
+// Functions
+float3 GetRayDirection (float2 uv) {
+    // world space direction
+    return _CameraFrustumCorners[0].xyz +
+    (_CameraFrustumCorners[3].xyz - _CameraFrustumCorners[0].xyz) * uv.x +
+    (_CameraFrustumCorners[1].xyz - _CameraFrustumCorners[0].xyz) * uv.y;
+}
+
+// Kernels
+[numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, THREAD_GROUP_SIZE_Z)]
+void CSMain (
+in uint3 dispatchThreadID : SV_DispatchThreadID, // DispatchThreadID  = dot(GroupID, numthreads) + GroupThreadId;
+in uint  groupIndex       : SV_GroupIndex, // uint GroupIndex = unique index of a thread inside a group
+in uint3 groupID          : SV_GroupID, // GroupID = index for each dimension inside a ThreadGroupCount
+in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices for each dimension inside a group of the current thread
+) {
+    uint width, height;
+    _Result.GetDimensions(width, height);
+
+    uint rayIndex = GetIndex(dispatchThreadID, width, height);
+    float2 uv = GetUV(dispatchThreadID, width, height);
+    float3 dir = GetRayDirection(uv);
+
+    Ray ray = CreateRay(_WorldSpaceCameraPos.xyz, dir);
+    _RayBuffer[rayIndex] = ray;
+}

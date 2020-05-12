@@ -6,8 +6,8 @@
 #define DIFFUSE_MATERIAL 1
 #define GLOOSY_MATERIAL 2
 
-#define BOUNCE_RATIO bounceRatio
-float bounceRatio;
+#define BOUNCE_RATIO _BounceRatio
+float _BounceRatio;
 
 struct SphereData {
     float3 position;
@@ -38,6 +38,8 @@ struct Ray {
     float3 origin;
     float3 direction;
     float3 color;
+    float3 output;
+    int count;
 
     float3 GetHitPoint (float t) {
         return origin + direction * t;
@@ -67,7 +69,7 @@ struct Ray {
 
     bool HitPlane (PlaneData plane, float min_t, float max_t, inout RayHit hit) {
         float NDotD = dot(plane.normal, direction);
-        if (NDotD < -1e-6) { 
+        if (NDotD < -1e-6) {
             float3 p0 = plane.position - origin;
             float t = dot(p0, plane.normal) / NDotD;
             if (t >= min_t && t < max_t) {
@@ -89,14 +91,18 @@ Ray CreateRay (float3 origin, float3 direction) {
     ray.origin = origin;
     ray.direction = normalize(direction);
     ray.color = 1;
+    ray.output = 0;
+    ray.count = 0;
     return ray;
 }
 
-Ray CreateRay (float3 origin, float3 direction, float3 color) {
+Ray CreateRay (float3 origin, float3 direction, float3 color, Ray old) {
     Ray ray = (Ray)0;
     ray.origin = origin;
     ray.direction = normalize(direction);
     ray.color = color;
+    ray.output = old.output;
+    ray.count = old.count;
     return ray;
 }
 
@@ -104,7 +110,8 @@ bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
     scattered_ray = CreateRay(
     hit.position + 0.001 * hit.normal,
     hit.normal + RandInUnitSphere (hit.normal + hit.position),
-    ray.color * hit.albedo.rgb * BOUNCE_RATIO
+    ray.color * hit.albedo.rgb * BOUNCE_RATIO,
+    ray
     );
     return true;
 }
@@ -117,7 +124,8 @@ bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     scattered_ray = CreateRay(
     hit.position + 0.001 * hit.normal,
     reflection,
-    ray.color * hit.specular.rgb * BOUNCE_RATIO
+    ray.color * hit.specular.rgb * BOUNCE_RATIO,
+    ray
     );
     return dot(reflection, hit.normal) > 0;
 }
