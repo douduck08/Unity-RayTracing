@@ -5,7 +5,8 @@ using UnityEngine.Rendering;
 
 public enum MaterialType {
     Diffuse = 1,
-    Gloosy = 2
+    Glossy = 2,
+    Translucent = 3
 }
 
 [RequireComponent (typeof (Camera))]
@@ -39,6 +40,7 @@ public class RayTracingCamera : MonoBehaviour {
     [SerializeField] int superSampling = 8;
 
     [Header ("Lighting Settings")]
+    [SerializeField] Color skyColor;
     [SerializeField, Range (0f, 1f)] float lightBounceRatio = 0.5f;
 
     [Header ("Other Settings")]
@@ -121,7 +123,7 @@ public class RayTracingCamera : MonoBehaviour {
             return false;
         }
 
-        renderResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0);
+        renderResult = new RenderTexture (renderTextureWidth, renderTextureHeight, 0, RenderTextureFormat.DefaultHDR);
         renderResult.enableRandomWrite = true;
         renderResult.Create ();
 
@@ -157,6 +159,7 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void UpdateLightingParameters () {
+        rayTracingCS.SetVector ("_SkyColor", skyColor);
         rayTracingCS.SetFloat ("_BounceRatio", lightBounceRatio);
     }
 

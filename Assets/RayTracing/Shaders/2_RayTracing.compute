@@ -8,8 +8,7 @@
 #define MAX_RAY_DISTANCE 1000.0
 #define MAX_RAY_STEP 50
 
-#include "Common.cginc"
-#include "RayTracingStruct.cginc"
+#include "RayTracing.cginc"
 
 // Buffers
 RWTexture2D<float4> _Result;
@@ -18,6 +17,7 @@ StructuredBuffer<SphereData> _SphereBuffer;
 StructuredBuffer<PlaneData> _PlaneBuffer;
 
 cbuffer CB {
+    float4 _SkyColor;
     int _SphereNumber;
     int _PlaneNumber;
 };
@@ -39,7 +39,7 @@ bool RayCast(Ray ray, out RayHit hit) {
 }
 
 float3 SampleEnvColor (float3 direction) {
-    return float3(0.5, 0.7, 1);
+    return _SkyColor.rgb;
 }
 
 bool SampleColor (Ray ray, out Ray scattered_ray) {
@@ -56,7 +56,7 @@ bool SampleColor (Ray ray, out Ray scattered_ray) {
         // ** debug **
     }
     else {
-        scattered_ray = CreateRay (0, 0, ray.color * SampleEnvColor(ray.direction), ray);
+        scattered_ray = RedirectRay (0, 0, ray.color * SampleEnvColor(ray.direction), ray);
         // scattered_ray.color = ray.color * SampleEnvColor(ray.direction);
     }
     return hit_something;

@@ -4,7 +4,8 @@
 #include "Common.cginc"
 
 #define DIFFUSE_MATERIAL 1
-#define GLOOSY_MATERIAL 2
+#define GLOSSY_MATERIAL 2
+#define TRANSLUCENT_MATERIAL 3
 
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
@@ -96,7 +97,7 @@ Ray CreateRay (float3 origin, float3 direction) {
     return ray;
 }
 
-Ray CreateRay (float3 origin, float3 direction, float3 color, Ray old) {
+Ray RedirectRay (float3 origin, float3 direction, float3 color, Ray old) {
     Ray ray = (Ray)0;
     ray.origin = origin;
     ray.direction = normalize(direction);
@@ -107,7 +108,7 @@ Ray CreateRay (float3 origin, float3 direction, float3 color, Ray old) {
 }
 
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
-    scattered_ray = CreateRay(
+    scattered_ray = RedirectRay(
     hit.position + 0.001 * hit.normal,
     hit.normal + RandInUnitSphere (hit.normal + hit.position),
     ray.color * hit.albedo.rgb * BOUNCE_RATIO,
@@ -121,7 +122,7 @@ bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     float3 reflection = reflect(normalize(ray.direction), hit.normal);
     reflection = reflection + fuzz * RandInUnitSphere (hit.normal + hit.position);
 
-    scattered_ray = CreateRay(
+    scattered_ray = RedirectRay(
     hit.position + 0.001 * hit.normal,
     reflection,
     ray.color * hit.specular.rgb * BOUNCE_RATIO,
@@ -130,12 +131,61 @@ bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     return dot(reflection, hit.normal) > 0;
 }
 
+float Schlick(float cosine, float eta) {
+    float r0 = (eta - 1) / (eta + 1);
+    r0 = r0 * r0;
+    return r0 + (1 - r0) * pow(1 - cosine, 5);
+}
+
+bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
+    float eta = 1.5; // glass
+    float3 normal = hit.normal;
+    if (dot(ray.direction, normal) > 0) {
+        normal = -normal; // refract outward
+    }
+    else {
+        eta = 1 / eta; // refract inward
+    }
+
+    float cosine = -dot(ray.direction, normal) / length(ray.direction);
+    float reflect_prob = Schlick(cosine, eta);
+
+    float3 dir = normalize(ray.direction);
+    float3 refraction = refract(-dir, normal, eta);
+    float3 reflection = reflect(dir, hit.normal);
+    if (!any(refraction)) {
+        reflect_prob = 1;
+    }
+
+    if (abs(RandInUnitSphere (hit.normal + hit.position).x) > reflect_prob) {
+        scattered_ray = RedirectRay(
+        hit.position - 0.001 * normal,
+        refraction,
+        ray.color * hit.specular.rgb,
+        ray
+        );
+    }
+    else {
+        scattered_ray = RedirectRay(
+        hit.position + 0.001 * hit.normal,
+        reflection,
+        ray.color * hit.specular.rgb * BOUNCE_RATIO,
+        ray
+        );
+    }
+    return true;
+}
+
+
 bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
     if (hit.material == DIFFUSE_MATERIAL) {
         return ScatterLambertian(ray, hit, scattered_ray);
     }
-    if (hit.material == GLOOSY_MATERIAL) {
+    if (hit.material == GLOSSY_MATERIAL) {
         return ScatterReflection(ray, hit, scattered_ray);
+    }
+    if (hit.material == TRANSLUCENT_MATERIAL) {
+        return ScatterRefraction(ray, hit, scattered_ray);
     }
     return false;
 }
