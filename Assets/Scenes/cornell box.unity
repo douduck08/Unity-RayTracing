@@ -162,6 +162,11 @@ MonoBehaviour:
   color: {r: 1, g: 1, b: 1, a: 1}
   metallic: 0
   glossiness: 0
+  material:
+    materialType: 1
+    color: {r: 1, g: 1, b: 1, a: 1}
+    metallic: 0.02
+    glossiness: 0.5
 --- !u!64 &57132234
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -271,6 +276,11 @@ MonoBehaviour:
   color: {r: 0, g: 1, b: 0, a: 1}
   metallic: 0
   glossiness: 0
+  material:
+    materialType: 1
+    color: {r: 0, g: 1, b: 0, a: 1}
+    metallic: 0.02
+    glossiness: 0.5
 --- !u!64 &687946838
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -380,6 +390,11 @@ MonoBehaviour:
   color: {r: 1, g: 1, b: 1, a: 1}
   metallic: 0
   glossiness: 0
+  material:
+    materialType: 1
+    color: {r: 1, g: 1, b: 1, a: 1}
+    metallic: 0.02
+    glossiness: 0.5
 --- !u!64 &704139632
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -617,6 +632,11 @@ MonoBehaviour:
   color: {r: 1, g: 1, b: 1, a: 1}
   metallic: 0
   glossiness: 0
+  material:
+    materialType: 1
+    color: {r: 1, g: 1, b: 1, a: 1}
+    metallic: 0.02
+    glossiness: 0.5
 --- !u!1 &1727832970
 GameObject:
   m_ObjectHideFlags: 0
@@ -667,6 +687,11 @@ MonoBehaviour:
   color: {r: 1, g: 0, b: 0, a: 1}
   metallic: 0
   glossiness: 0
+  material:
+    materialType: 1
+    color: {r: 1, g: 0, b: 0, a: 1}
+    metallic: 0.02
+    glossiness: 0.5
 --- !u!64 &1727832973
 MeshCollider:
   m_ObjectHideFlags: 0

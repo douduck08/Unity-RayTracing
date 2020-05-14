@@ -138,7 +138,7 @@ float Schlick(float cosine, float eta) {
 }
 
 bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
-    float eta = 1.5; // glass
+    float eta = hit.albedo.w;
     float3 normal = hit.normal;
     if (dot(ray.direction, normal) > 0) {
         normal = -normal; // refract outward
@@ -161,7 +161,7 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
         scattered_ray = RedirectRay(
         hit.position - 0.001 * normal,
         refraction,
-        ray.color * hit.specular.rgb,
+        ray.color * hit.albedo.rgb,
         ray
         );
     }
@@ -175,7 +175,6 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
     }
     return true;
 }
-
 
 bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
     if (hit.material == DIFFUSE_MATERIAL) {

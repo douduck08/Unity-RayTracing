@@ -19,7 +19,7 @@ public class RandomPlacer : MonoBehaviour {
             pos.y = Random.Range (minPos.y, maxPos.y);
             pos.z = Random.Range (minPos.z, maxPos.z);
             sphere.transform.localPosition = pos;
-            sphere.SetMaterial ((MaterialType)Random.Range (1, 3), Random.ColorHSV (0f, 1f, 0.9f, 1f, 0.5f, 1f), Random.Range (0f, 1f), Random.Range (0f, 1f));
+            sphere.material.SetMaterial ((MaterialType)Random.Range (1, 3), Random.ColorHSV (0f, 1f, 0.9f, 1f, 0.5f, 1f), Random.Range (0f, 1f), Random.Range (0f, 1f));
         }
     }
 }

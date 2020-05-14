@@ -3,12 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public enum MaterialType {
-    Diffuse = 1,
-    Glossy = 2,
-    Translucent = 3
-}
-
 [RequireComponent (typeof (Camera))]
 public class RayTracingCamera : MonoBehaviour {
 
