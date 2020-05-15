@@ -34,6 +34,7 @@ public class RayTracingCamera : MonoBehaviour {
     [SerializeField] int superSampling = 8;
 
     [Header ("Lighting Settings")]
+    [SerializeField] Light sunLight;
     [SerializeField] Color skyColor;
     [SerializeField, Range (0f, 1f)] float lightBounceRatio = 0.5f;
 
@@ -53,6 +54,7 @@ public class RayTracingCamera : MonoBehaviour {
     ComputeBuffer rayBuffer;
     ComputeBuffer sphereBuffer;
     ComputeBuffer planeBuffer;
+    ComputeBuffer boxBuffer;
 
     bool needInitRay = true;
     Material denoiseMaterial;
@@ -72,6 +74,7 @@ public class RayTracingCamera : MonoBehaviour {
         ReleaseComputeBuffer (ref rayBuffer);
         ReleaseComputeBuffer (ref sphereBuffer);
         ReleaseComputeBuffer (ref planeBuffer);
+        ReleaseComputeBuffer (ref boxBuffer);
     }
 
     void OnValidate () {
@@ -128,6 +131,7 @@ public class RayTracingCamera : MonoBehaviour {
         rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, RAY_STRUCT_SIZE);
         sphereBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingSphere.DATA_SIZE);
         planeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingPlane.DATA_SIZE);
+        boxBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingBox.DATA_SIZE);
 
         initializeRaysCS.SetTexture (initializeRaysKernelID, "_Result", renderResult);
         initializeRaysCS.SetBuffer (initializeRaysKernelID, "_RayBuffer", rayBuffer);
@@ -139,6 +143,7 @@ public class RayTracingCamera : MonoBehaviour {
         rayTracingCS.SetBuffer (rayTracingKernelID, "_SphericalSampleBuffer", fibonacciBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_SphereBuffer", sphereBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_PlaneBuffer", planeBuffer);
+        rayTracingCS.SetBuffer (rayTracingKernelID, "_BoxBuffer", boxBuffer);
 
         normalizeResultCS.SetTexture (normalizeResultKernelID, "_Result", renderResult);
         normalizeResultCS.SetBuffer (normalizeResultKernelID, "_RayBuffer", rayBuffer);
@@ -153,6 +158,10 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void UpdateLightingParameters () {
+        if (sunLight != null) {
+            rayTracingCS.SetVector ("_SunColor", sunLight.color);
+            rayTracingCS.SetVector ("_SunDirection", sunLight.transform.forward);
+        }
         rayTracingCS.SetVector ("_SkyColor", skyColor);
         rayTracingCS.SetFloat ("_BounceRatio", lightBounceRatio);
     }
@@ -181,6 +190,9 @@ public class RayTracingCamera : MonoBehaviour {
         }
         if (RayTracingPlane.UpdateComputeBufferIfNeeded (ref planeBuffer, out count)) {
             rayTracingCS.SetInt ("_PlaneNumber", count);
+        }
+        if (RayTracingBox.UpdateComputeBufferIfNeeded (ref boxBuffer, out count)) {
+            rayTracingCS.SetInt ("_BoxNumber", count);
         }
     }
 

@@ -6,6 +6,7 @@
 #define DIFFUSE_MATERIAL 1
 #define GLOSSY_MATERIAL 2
 #define TRANSLUCENT_MATERIAL 3
+#define LIGHT_MATERIAL 10
 
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
@@ -21,6 +22,14 @@ struct SphereData {
 struct PlaneData {
     float3 position;
     float3 normal;
+    float4 albedo;
+    float4 specular;
+    int material;
+};
+
+struct BoxData {
+    float3 position;
+    float3 size;
     float4 albedo;
     float4 specular;
     int material;
@@ -45,6 +54,17 @@ struct Ray {
     float3 GetHitPoint (float t) {
         return origin + direction * t;
     }
+
+    // bool AABB(float3 min_pos, float3 max_pos, float min_t, float max_t) {
+        //     for (int i = 0; i < 3; i++) {
+            //         float t0 = min((min_pos[i] - origin[i]) / direction[i], (max_pos[i] - origin[i]) / direction[i]);
+            //         float t1 = max((min_pos[i] - origin[i]) / direction[i], (max_pos[i] - origin[i]) / direction[i]);
+            //         min_t = max(min_t, t0);
+            //         max_t = min(max_t, t0);
+            //         if (max_t < min_t) return false;
+        //     }
+        //     return true;
+    // }
 
     bool HitSphere (SphereData sphere, float min_t, float max_t, inout RayHit hit) {
         float3 oc = origin - sphere.position;
@@ -84,6 +104,31 @@ struct Ray {
             }
         }
         return false; // hit is an inout parameter, will keep value when hit nothing.
+    }
+
+    bool HitBox (BoxData box, float min_t, float max_t, inout RayHit hit) {
+        // ref: https://www.iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
+        float3 o = origin - box.position; // world to object space
+        float3 m = 1.0 / direction;
+        float3 n = m * o;
+        float3 k = abs(m) * box.size / 2.0;
+        float3 t1 = -n - k;
+        float3 t2 = -n + k;
+
+        float tN = max(max(t1.x, t1.y), t1.z);
+        float tF = min(min(t2.x, t2.y), t2.z);
+
+        if (tN > tF || tF < min_t || tN > max_t) {
+            return false;
+        }
+
+        hit.t = tN;
+        hit.position = GetHitPoint(tN); // object to world space
+        hit.normal = -sign(direction) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+        hit.albedo = box.albedo;
+        hit.specular = box.specular;
+        hit.material = box.material;
+        return true;
     }
 };
 
@@ -176,6 +221,17 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
     return true;
 }
 
+bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
+    // TODO
+    scattered_ray = RedirectRay(
+    0,
+    0,
+    ray.color + hit.albedo.rgb,
+    ray
+    );
+    return false;
+}
+
 bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
     if (hit.material == DIFFUSE_MATERIAL) {
         return ScatterLambertian(ray, hit, scattered_ray);
@@ -185,6 +241,9 @@ bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
     }
     if (hit.material == TRANSLUCENT_MATERIAL) {
         return ScatterRefraction(ray, hit, scattered_ray);
+    }
+    if (hit.material == LIGHT_MATERIAL) {
+        return HitLight(ray, hit, scattered_ray);
     }
     return false;
 }

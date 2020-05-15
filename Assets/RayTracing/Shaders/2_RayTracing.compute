@@ -6,7 +6,7 @@
 
 #define MIN_RAY_DISTANCE 0.001
 #define MAX_RAY_DISTANCE 1000.0
-#define MAX_RAY_STEP 50
+#define MAX_RAY_STEP 10
 
 #include "RayTracing.cginc"
 
@@ -15,11 +15,15 @@ RWTexture2D<float4> _Result;
 RWStructuredBuffer<Ray> _RayBuffer;
 StructuredBuffer<SphereData> _SphereBuffer;
 StructuredBuffer<PlaneData> _PlaneBuffer;
+StructuredBuffer<BoxData> _BoxBuffer;
 
 cbuffer CB {
     float4 _SkyColor;
+    float4 _SunColor;
+    float4 _SunDirection;
     int _SphereNumber;
     int _PlaneNumber;
+    int _BoxNumber;
 };
 
 // Functions
@@ -35,10 +39,15 @@ bool RayCast(Ray ray, out RayHit hit) {
     for (i = 0; i < _PlaneNumber; i++) {
         if (ray.HitPlane(_PlaneBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
     }
+    for (i = 0; i < _BoxNumber; i++) {
+        if (ray.HitBox(_BoxBuffer[i], MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
+    }
     return hit_something;
 }
 
 float3 SampleEnvColor (float3 direction) {
+    // float NdotL = max(dot(-direction, _SunDirection), 0);
+    // return _SkyColor.rgb + _SunColor.rgb * NdotL;
     return _SkyColor.rgb;
 }
 

@@ -5,7 +5,8 @@ using UnityEngine;
 public enum MaterialType {
     Diffuse = 1,
     Glossy = 2,
-    Translucent = 3
+    Translucent = 3,
+    Light = 10
 }
 
 [System.Serializable]
