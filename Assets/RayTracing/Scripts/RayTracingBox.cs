@@ -5,6 +5,7 @@ using UnityEngine;
 public struct BoxData {
     public Vector3 position;
     public Vector3 size;
+    public Vector3 rotation;
     public Vector4 albedo;
     public Vector4 specular;
     public int material;
@@ -13,8 +14,8 @@ public struct BoxData {
 [RequireComponent (typeof (MeshRenderer))]
 public class RayTracingBox : RayTracingObjectBase<RayTracingBox, BoxData>, IRayTracingObject<BoxData> {
 
-    // (3 + 3 + 4 + 4 + 1) * 4 = 15 * 4
-    public const int DATA_SIZE = 60;
+    // (3 + 3 + 3 + 4 + 4 + 1) * 4 = 18 * 4
+    public const int DATA_SIZE = 72;
 
     public RayTracingMaterial material;
     MaterialPropertyBlock materialPropertyBlock;
@@ -38,6 +39,7 @@ public class RayTracingBox : RayTracingObjectBase<RayTracingBox, BoxData>, IRayT
         BoxData result;
         result.position = transform.position;
         result.size = transform.lossyScale;
+        result.rotation = transform.eulerAngles;
         material.GetStructData (out result.albedo, out result.specular, out result.material);
         return result;
     }

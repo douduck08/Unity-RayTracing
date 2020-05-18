@@ -30,6 +30,7 @@ struct PlaneData {
 struct BoxData {
     float3 position;
     float3 size;
+    float3 rotation;
     float4 albedo;
     float4 specular;
     int material;
@@ -48,6 +49,7 @@ struct Ray {
     float3 origin;
     float3 direction;
     float3 color;
+    float3 emission;
     float3 output;
     int count;
 
@@ -107,9 +109,17 @@ struct Ray {
     }
 
     bool HitBox (BoxData box, float min_t, float max_t, inout RayHit hit) {
+        float4x4 xRotationMatrix = rotationMatrix(float3(1, 0, 0), radians(box.rotation.x));
+        float4x4 yRotationMatrix = rotationMatrix(float3(0, 1, 0), radians(box.rotation.y));
+        float4x4 zRotationMatrix = rotationMatrix(float3(0, 0, 1), radians(box.rotation.z));
+        float4x4 rotMatrix = mul(yRotationMatrix, mul(zRotationMatrix, xRotationMatrix)); // objectToWorld
+        float4x4 invRotMatrix = inverse(rotMatrix); // worldToObject
+
         // ref: https://www.iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
-        float3 o = origin - box.position; // world to object space
-        float3 m = 1.0 / direction;
+        float3 o = mul(invRotMatrix, float4(origin - box.position, 1.0)).xyz; // world to object space
+        float3 d = mul(invRotMatrix, float4(direction, 0.0)).xyz;
+
+        float3 m = 1.0 / d;
         float3 n = m * o;
         float3 k = abs(m) * box.size / 2.0;
         float3 t1 = -n - k;
@@ -122,9 +132,12 @@ struct Ray {
             return false;
         }
 
+        float3 normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+        // normal = mul(rotMatrix, float4(normal, 0.0)).xyz;
+
         hit.t = tN;
-        hit.position = GetHitPoint(tN); // object to world space
-        hit.normal = -sign(direction) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+        hit.position = GetHitPoint(tN); // world space
+        hit.normal = normal;
         hit.albedo = box.albedo;
         hit.specular = box.specular;
         hit.material = box.material;
@@ -137,6 +150,7 @@ Ray CreateRay (float3 origin, float3 direction) {
     ray.origin = origin;
     ray.direction = normalize(direction);
     ray.color = 1;
+    ray.emission = 0;
     ray.output = 0;
     ray.count = 0;
     return ray;
@@ -147,6 +161,7 @@ Ray RedirectRay (float3 origin, float3 direction, float3 color, Ray old) {
     ray.origin = origin;
     ray.direction = normalize(direction);
     ray.color = color;
+    ray.emission = old.emission;
     ray.output = old.output;
     ray.count = old.count;
     return ray;
@@ -222,11 +237,13 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
 }
 
 bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
+    ray.emission = ray.color * hit.albedo.rgb;
+    // ray.emission += ray.color * hit.albedo.rgb;
     // TODO
     scattered_ray = RedirectRay(
     0,
     0,
-    ray.color + hit.albedo.rgb,
+    ray.color * BOUNCE_RATIO,
     ray
     );
     return false;

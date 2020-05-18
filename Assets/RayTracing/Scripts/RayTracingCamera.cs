@@ -7,11 +7,12 @@ using UnityEngine.Rendering;
 public class RayTracingCamera : MonoBehaviour {
 
     public const int MAX_OBJECT_COUNT = 64;
-    public const int RAY_STRUCT_SIZE = 52;
+    public const int RAY_STRUCT_SIZE = 64;
     // struct Ray {
     //     float3 origin;
     //     float3 direction;
     //     float3 color;
+    //     float3 emission;
     //     float3 output;
     //     int count;
     // }
@@ -178,7 +179,7 @@ public class RayTracingCamera : MonoBehaviour {
         resetRaysCS.SetMatrix ("_CameraFrustumCorners", cameraFrustumCorners);
         resetRaysCS.SetVector ("_WorldSpaceCameraPos", renderCamera.transform.position);
 
-        fibonacciOffset = (fibonacciOffset + 179) % 4096;
+        fibonacciOffset = (fibonacciOffset + Mathf.CeilToInt (1793 * Time.deltaTime)) % 4096;
         rayTracingCS.SetInt ("_SphericalSampleOffset", fibonacciOffset);
 
     }
