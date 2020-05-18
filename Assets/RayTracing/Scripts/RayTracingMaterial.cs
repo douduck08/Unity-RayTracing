@@ -6,6 +6,7 @@ public enum MaterialType {
     Diffuse = 1,
     Glossy = 2,
     Translucent = 3,
+    Volume = 9,
     Light = 10
 }
 

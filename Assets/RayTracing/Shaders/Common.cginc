@@ -40,6 +40,10 @@ float3 RandInUnitSphere (float3 seed) {
     return seed;
 }
 
+float Rand01 (float3 seed) {
+    return abs(RandInUnitSphere (seed).x);
+}
+
 float3 GammaToLinearSpace (float3 sRGB) {
     // Approximate version from http://chilliant.blogspot.com.au/2012/08/srgb-approximations-for-hlsl.html?m=1
     return sRGB * (sRGB * (sRGB * 0.305306011h + 0.682171111h) + 0.012522878h);

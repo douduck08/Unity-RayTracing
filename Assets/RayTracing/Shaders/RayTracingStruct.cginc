@@ -6,6 +6,7 @@
 #define DIFFUSE_MATERIAL 1
 #define GLOSSY_MATERIAL 2
 #define TRANSLUCENT_MATERIAL 3
+#define VOLUME_MATERIAL 9
 #define LIGHT_MATERIAL 10
 
 #define BOUNCE_RATIO _BounceRatio
@@ -135,6 +136,18 @@ struct Ray {
         float3 normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
         // normal = mul(rotMatrix, float4(normal, 0.0)).xyz;
 
+        if(box.material == VOLUME_MATERIAL) {
+            // TODO: check if outside box
+            float density = 0.2;
+            float dt = -(1.0 / density) * log(Rand01(normal + d));
+            if (dt < 1) {
+                tN += dt * (tF - tN);
+            }
+            else {
+                return false;
+            }
+        }
+
         hit.t = tN;
         hit.position = GetHitPoint(tN); // world space
         hit.normal = normal;
@@ -170,7 +183,7 @@ Ray RedirectRay (float3 origin, float3 direction, float3 color, Ray old) {
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
     scattered_ray = RedirectRay(
     hit.position + 0.001 * hit.normal,
-    hit.normal + RandInUnitSphere (hit.normal + hit.position),
+    hit.normal + RandInUnitSphere(hit.normal + hit.position),
     ray.color * hit.albedo.rgb * BOUNCE_RATIO,
     ray
     );
@@ -180,7 +193,7 @@ bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
 bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     float fuzz = hit.specular.a;
     float3 reflection = reflect(normalize(ray.direction), hit.normal);
-    reflection = reflection + fuzz * RandInUnitSphere (hit.normal + hit.position);
+    reflection = reflection + fuzz * RandInUnitSphere(hit.normal + hit.position);
 
     scattered_ray = RedirectRay(
     hit.position + 0.001 * hit.normal,
@@ -217,7 +230,7 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
         reflect_prob = 1;
     }
 
-    if (abs(RandInUnitSphere (hit.normal + hit.position).x) > reflect_prob) {
+    if (Rand01(hit.normal + hit.position) > reflect_prob) {
         scattered_ray = RedirectRay(
         hit.position - 0.001 * normal,
         refraction,
@@ -237,8 +250,8 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
 }
 
 bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
-    ray.emission = ray.color * hit.albedo.rgb;
-    // ray.emission += ray.color * hit.albedo.rgb;
+    // ray.emission = ray.color * hit.albedo.rgb;
+    ray.emission += ray.color * hit.albedo.rgb;
     // TODO
     scattered_ray = RedirectRay(
     0,
@@ -246,7 +259,17 @@ bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
     ray.color * BOUNCE_RATIO,
     ray
     );
-    return false;
+    return true;
+}
+
+bool ScatterVolume (Ray ray, RayHit hit, out Ray scattered_ray) {
+    scattered_ray = RedirectRay(
+    hit.position,
+    RandInUnitSphere(hit.normal + hit.position),
+    ray.color * hit.albedo.rgb,
+    ray
+    );
+    return true;
 }
 
 bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
@@ -258,6 +281,9 @@ bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
     }
     if (hit.material == TRANSLUCENT_MATERIAL) {
         return ScatterRefraction(ray, hit, scattered_ray);
+    }
+    if (hit.material == VOLUME_MATERIAL) {
+        return ScatterVolume(ray, hit, scattered_ray);
     }
     if (hit.material == LIGHT_MATERIAL) {
         return HitLight(ray, hit, scattered_ray);
