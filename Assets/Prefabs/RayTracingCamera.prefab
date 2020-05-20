@@ -58,7 +58,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 45
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -98,14 +98,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   initializeRaysCS: {fileID: 7200000, guid: dd6ac644e0edc6549b020cf646e7c867, type: 3}
   resetRaysCS: {fileID: 7200000, guid: e20aa100838441f48bdefec1a2706a1a, type: 3}
+  prepareCS: {fileID: 7200000, guid: 69e939ab59734c5418abe6631d62bd65, type: 3}
   rayTracingCS: {fileID: 7200000, guid: b56d2c59c5e0c6045be7366581882a0f, type: 3}
   normalizeResultCS: {fileID: 7200000, guid: 23d6a41d7cdd6564a98a212b677fcf36, type: 3}
   denoiseShader: {fileID: 4800000, guid: a75c74cff2669f5498862bc0fc7a0e8f, type: 3}
-  renderTextureWidth: 1024
+  renderTextureWidth: 512
   renderTextureHeight: 512
-  superSampling: 8
+  superSampling: 2
+  sunLight: {fileID: 0}
   skyColor: {r: 0.8537736, g: 1, b: 0.9840352, a: 1}
-  lightBounceRatio: 0.5
+  lightBounceRatio: 0.2
   denoise: 0
   denoiseExponent: 128
 --- !u!114 &315137259127591302

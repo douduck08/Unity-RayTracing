@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 public class RayTracingCamera : MonoBehaviour {
 
     public const int MAX_OBJECT_COUNT = 64;
+    public const int TRANSFORM_STRUCT_SIZE = 96; // 4 * 6 * 4
     public const int RAY_STRUCT_SIZE = 64;
     // struct Ray {
     //     float3 origin;
@@ -20,12 +21,14 @@ public class RayTracingCamera : MonoBehaviour {
     [Header ("Shaders")]
     [SerializeField] ComputeShader initializeRaysCS;
     [SerializeField] ComputeShader resetRaysCS;
+    [SerializeField] ComputeShader prepareCS;
     [SerializeField] ComputeShader rayTracingCS;
     [SerializeField] ComputeShader normalizeResultCS;
     [SerializeField] Shader denoiseShader;
 
     int initializeRaysKernelID;
     int resetRaysKernelID;
+    int prepareKernelID;
     int rayTracingKernelID;
     int normalizeResultKernelID;
 
@@ -56,6 +59,7 @@ public class RayTracingCamera : MonoBehaviour {
     ComputeBuffer sphereBuffer;
     ComputeBuffer planeBuffer;
     ComputeBuffer boxBuffer;
+    ComputeBuffer transformBuffer;
 
     bool needInitRay = true;
     Material denoiseMaterial;
@@ -93,6 +97,7 @@ public class RayTracingCamera : MonoBehaviour {
         if (needInitRay) {
             needInitRay = false;
             initializeRaysCS.Dispatch (initializeRaysKernelID, threadGroup.x, threadGroup.y, superSampling);
+            prepareCS.Dispatch (prepareKernelID, Mathf.CeilToInt (MAX_OBJECT_COUNT / 128.0f), 1, 1);
         } else {
             resetRaysCS.Dispatch (resetRaysKernelID, threadGroup.x, threadGroup.y, superSampling);
         }
@@ -133,11 +138,15 @@ public class RayTracingCamera : MonoBehaviour {
         sphereBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingSphere.DATA_SIZE);
         planeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingPlane.DATA_SIZE);
         boxBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingBox.DATA_SIZE);
+        transformBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, TRANSFORM_STRUCT_SIZE);
 
         initializeRaysCS.SetTexture (initializeRaysKernelID, "_Result", renderResult);
         initializeRaysCS.SetBuffer (initializeRaysKernelID, "_RayBuffer", rayBuffer);
         resetRaysCS.SetTexture (resetRaysKernelID, "_Result", renderResult);
         resetRaysCS.SetBuffer (resetRaysKernelID, "_RayBuffer", rayBuffer);
+
+        prepareCS.SetBuffer (prepareKernelID, "_BoxBuffer", boxBuffer);
+        prepareCS.SetBuffer (prepareKernelID, "_TransformData", transformBuffer);
 
         rayTracingCS.SetTexture (rayTracingKernelID, "_Result", renderResult);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_RayBuffer", rayBuffer);
@@ -145,6 +154,7 @@ public class RayTracingCamera : MonoBehaviour {
         rayTracingCS.SetBuffer (rayTracingKernelID, "_SphereBuffer", sphereBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_PlaneBuffer", planeBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_BoxBuffer", boxBuffer);
+        rayTracingCS.SetBuffer (rayTracingKernelID, "_TransformData", transformBuffer);
 
         normalizeResultCS.SetTexture (normalizeResultKernelID, "_Result", renderResult);
         normalizeResultCS.SetBuffer (normalizeResultKernelID, "_RayBuffer", rayBuffer);
@@ -154,6 +164,7 @@ public class RayTracingCamera : MonoBehaviour {
     bool TryGetKernels () {
         return TryGetKernel ("CSMain", ref initializeRaysCS, ref initializeRaysKernelID) &&
         TryGetKernel ("CSMain", ref resetRaysCS, ref resetRaysKernelID) &&
+        TryGetKernel ("CSMain", ref prepareCS, ref prepareKernelID) &&
         TryGetKernel ("CSMain", ref rayTracingCS, ref rayTracingKernelID) &&
         TryGetKernel ("CSMain", ref normalizeResultCS, ref normalizeResultKernelID);
     }
@@ -193,6 +204,7 @@ public class RayTracingCamera : MonoBehaviour {
             rayTracingCS.SetInt ("_PlaneNumber", count);
         }
         if (RayTracingBox.UpdateComputeBufferIfNeeded (ref boxBuffer, out count)) {
+            prepareCS.SetInt ("_BoxNumber", count);
             rayTracingCS.SetInt ("_BoxNumber", count);
         }
     }

@@ -4,8 +4,8 @@ using UnityEngine;
 
 public struct BoxData {
     public Vector3 position;
-    public Vector3 size;
     public Vector3 rotation;
+    public Vector3 scale;
     public Vector4 albedo;
     public Vector4 specular;
     public int material;
@@ -38,7 +38,7 @@ public class RayTracingBox : RayTracingObjectBase<RayTracingBox, BoxData>, IRayT
     public override BoxData GetData () {
         BoxData result;
         result.position = transform.position;
-        result.size = transform.lossyScale;
+        result.scale = transform.lossyScale;
         result.rotation = transform.eulerAngles;
         material.GetStructData (out result.albedo, out result.specular, out result.material);
         return result;

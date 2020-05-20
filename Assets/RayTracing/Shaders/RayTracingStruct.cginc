@@ -1,49 +1,38 @@
 #ifndef RAY_TRACING_STRUCT_INCLUDED
 #define RAY_TRACING_STRUCT_INCLUDED
 
-#include "Common.cginc"
+// struct TransformData {
+    //     float4 objectToWorldRow0;
+    //     float4 objectToWorldRow1;
+    //     float4 objectToWorldRow2;
+    //     float4 worldToObjectRow0;
+    //     float4 worldToObjectRow1;
+    //     float4 worldToObjectRow2;
 
-#define DIFFUSE_MATERIAL 1
-#define GLOSSY_MATERIAL 2
-#define TRANSLUCENT_MATERIAL 3
-#define VOLUME_MATERIAL 9
-#define LIGHT_MATERIAL 10
+    //     float4x4 ObjectToWorldMatix() {
+        //         return float4x4(objectToWorldRow0, objectToWorldRow1, objectToWorldRow2, float4(0, 0, 0, 1));
+    //     }
 
-#define BOUNCE_RATIO _BounceRatio
-float _BounceRatio;
+    //     float4x4 WorldToObjectMatix() {
+        //         return float4x4(worldToObjectRow0, worldToObjectRow1, worldToObjectRow2, float4(0, 0, 0, 1));
+    //     }
+// };
 
-struct SphereData {
-    float3 position;
-    float radius;
-    float4 albedo;
-    float4 specular;
-    int material;
-};
+struct TransformData {
+    float4 row0;
+    float4 row1;
+    float4 row2;
+    float4 row3;
+    float4 row4;
+    float4 row5;
 
-struct PlaneData {
-    float3 position;
-    float3 normal;
-    float4 albedo;
-    float4 specular;
-    int material;
-};
+    float4x4 ObjectToWorld() {
+        return float4x4(row0, row1, row2, float4(0, 0, 0, 1));
+    }
 
-struct BoxData {
-    float3 position;
-    float3 size;
-    float3 rotation;
-    float4 albedo;
-    float4 specular;
-    int material;
-};
-
-struct RayHit {
-    float3 position;
-    float t;
-    float4 albedo;
-    float4 specular;
-    float3 normal;
-    int material;
+    float4x4 WorldToObject() {
+        return float4x4(row3, row4, row5, float4(0, 0, 0, 1));
+    }
 };
 
 struct Ray {
@@ -68,94 +57,6 @@ struct Ray {
         //     }
         //     return true;
     // }
-
-    bool HitSphere (SphereData sphere, float min_t, float max_t, inout RayHit hit) {
-        float3 oc = origin - sphere.position;
-        float a = dot(direction, direction);
-        float b = dot(direction, oc) * 2;
-        float c = dot(oc, oc) - sphere.radius * sphere.radius;
-        float dis = b * b - 4 * a * c;
-
-        if (dis > 0) {
-            float t = (-b - sqrt(dis)) / (2.0 * a);
-            if (t > min_t && t < max_t) {
-                hit.t = t;
-                hit.position = GetHitPoint(t);
-                hit.normal = normalize(hit.position - sphere.position);
-                hit.albedo = sphere.albedo;
-                hit.specular = sphere.specular;
-                hit.material = sphere.material;
-                return true;
-            }
-        }
-        return false; // hit is an inout parameter, will keep value when hit nothing.
-    }
-
-    bool HitPlane (PlaneData plane, float min_t, float max_t, inout RayHit hit) {
-        float NDotD = dot(plane.normal, direction);
-        if (NDotD < -1e-6) {
-            float3 p0 = plane.position - origin;
-            float t = dot(p0, plane.normal) / NDotD;
-            if (t >= min_t && t < max_t) {
-                hit.t = t;
-                hit.position = GetHitPoint(t);
-                hit.normal = plane.normal;
-                hit.albedo = plane.albedo;
-                hit.specular = plane.specular;
-                hit.material = plane.material;
-                return true;
-            }
-        }
-        return false; // hit is an inout parameter, will keep value when hit nothing.
-    }
-
-    bool HitBox (BoxData box, float min_t, float max_t, inout RayHit hit) {
-        float4x4 xRotationMatrix = rotationMatrix(float3(1, 0, 0), radians(box.rotation.x));
-        float4x4 yRotationMatrix = rotationMatrix(float3(0, 1, 0), radians(box.rotation.y));
-        float4x4 zRotationMatrix = rotationMatrix(float3(0, 0, 1), radians(box.rotation.z));
-        float4x4 rotMatrix = mul(yRotationMatrix, mul(zRotationMatrix, xRotationMatrix)); // objectToWorld
-        float4x4 invRotMatrix = inverse(rotMatrix); // worldToObject
-
-        // ref: https://www.iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
-        float3 o = mul(invRotMatrix, float4(origin - box.position, 1.0)).xyz; // world to object space
-        float3 d = mul(invRotMatrix, float4(direction, 0.0)).xyz;
-
-        float3 m = 1.0 / d;
-        float3 n = m * o;
-        float3 k = abs(m) * box.size / 2.0;
-        float3 t1 = -n - k;
-        float3 t2 = -n + k;
-
-        float tN = max(max(t1.x, t1.y), t1.z);
-        float tF = min(min(t2.x, t2.y), t2.z);
-
-        if (tN > tF || tF < min_t || tN > max_t) {
-            return false;
-        }
-
-        float3 normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
-        // normal = mul(rotMatrix, float4(normal, 0.0)).xyz;
-
-        if(box.material == VOLUME_MATERIAL) {
-            // TODO: check if outside box
-            float density = 0.2;
-            float dt = -(1.0 / density) * log(Rand01(normal + d));
-            if (dt < 1) {
-                tN += dt * (tF - tN);
-            }
-            else {
-                return false;
-            }
-        }
-
-        hit.t = tN;
-        hit.position = GetHitPoint(tN); // world space
-        hit.normal = normal;
-        hit.albedo = box.albedo;
-        hit.specular = box.specular;
-        hit.material = box.material;
-        return true;
-    }
 };
 
 Ray CreateRay (float3 origin, float3 direction) {
@@ -180,115 +81,44 @@ Ray RedirectRay (float3 origin, float3 direction, float3 color, Ray old) {
     return ray;
 }
 
-bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
-    scattered_ray = RedirectRay(
-    hit.position + 0.001 * hit.normal,
-    hit.normal + RandInUnitSphere(hit.normal + hit.position),
-    ray.color * hit.albedo.rgb * BOUNCE_RATIO,
-    ray
-    );
-    return true;
-}
+struct RayHit {
+    float3 position;
+    float t;
+    float4 albedo;
+    float4 specular;
+    float3 normal;
+    int material;
+};
 
-bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
-    float fuzz = hit.specular.a;
-    float3 reflection = reflect(normalize(ray.direction), hit.normal);
-    reflection = reflection + fuzz * RandInUnitSphere(hit.normal + hit.position);
+struct SphereData {
+    float3 position;
+    float radius;
+    float4 albedo;
+    float4 specular;
+    int material;
 
-    scattered_ray = RedirectRay(
-    hit.position + 0.001 * hit.normal,
-    reflection,
-    ray.color * hit.specular.rgb * BOUNCE_RATIO,
-    ray
-    );
-    return dot(reflection, hit.normal) > 0;
-}
+    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit);
+};
 
-float Schlick(float cosine, float eta) {
-    float r0 = (eta - 1) / (eta + 1);
-    r0 = r0 * r0;
-    return r0 + (1 - r0) * pow(1 - cosine, 5);
-}
+struct PlaneData {
+    float3 position;
+    float3 normal;
+    float4 albedo;
+    float4 specular;
+    int material;
 
-bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
-    float eta = hit.albedo.w;
-    float3 normal = hit.normal;
-    if (dot(ray.direction, normal) > 0) {
-        normal = -normal; // refract outward
-    }
-    else {
-        eta = 1 / eta; // refract inward
-    }
+    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit);
+};
 
-    float cosine = -dot(ray.direction, normal) / length(ray.direction);
-    float reflect_prob = Schlick(cosine, eta);
+struct BoxData {
+    float3 position;
+    float3 rotation;
+    float3 scale;
+    float4 albedo;
+    float4 specular;
+    int material;
 
-    float3 dir = normalize(ray.direction);
-    float3 refraction = refract(-dir, normal, eta);
-    float3 reflection = reflect(dir, hit.normal);
-    if (!any(refraction)) {
-        reflect_prob = 1;
-    }
-
-    if (Rand01(hit.normal + hit.position) > reflect_prob) {
-        scattered_ray = RedirectRay(
-        hit.position - 0.001 * normal,
-        refraction,
-        ray.color * hit.albedo.rgb,
-        ray
-        );
-    }
-    else {
-        scattered_ray = RedirectRay(
-        hit.position + 0.001 * hit.normal,
-        reflection,
-        ray.color * hit.specular.rgb * BOUNCE_RATIO,
-        ray
-        );
-    }
-    return true;
-}
-
-bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
-    // ray.emission = ray.color * hit.albedo.rgb;
-    ray.emission += ray.color * hit.albedo.rgb;
-    // TODO
-    scattered_ray = RedirectRay(
-    0,
-    0,
-    ray.color * BOUNCE_RATIO,
-    ray
-    );
-    return true;
-}
-
-bool ScatterVolume (Ray ray, RayHit hit, out Ray scattered_ray) {
-    scattered_ray = RedirectRay(
-    hit.position,
-    RandInUnitSphere(hit.normal + hit.position),
-    ray.color * hit.albedo.rgb,
-    ray
-    );
-    return true;
-}
-
-bool Scatter (Ray ray, RayHit hit, out Ray scattered_ray) {
-    if (hit.material == DIFFUSE_MATERIAL) {
-        return ScatterLambertian(ray, hit, scattered_ray);
-    }
-    if (hit.material == GLOSSY_MATERIAL) {
-        return ScatterReflection(ray, hit, scattered_ray);
-    }
-    if (hit.material == TRANSLUCENT_MATERIAL) {
-        return ScatterRefraction(ray, hit, scattered_ray);
-    }
-    if (hit.material == VOLUME_MATERIAL) {
-        return ScatterVolume(ray, hit, scattered_ray);
-    }
-    if (hit.material == LIGHT_MATERIAL) {
-        return HitLight(ray, hit, scattered_ray);
-    }
-    return false;
-}
+    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData);
+};
 
 #endif // RAY_TRACING_STRUCT_INCLUDED
