@@ -10,6 +10,7 @@ public struct PlaneData {
     public int material;
 }
 
+// TODO: replace RayTracingObjectBase with RayTracingShape
 [RequireComponent (typeof (MeshRenderer))]
 public class RayTracingPlane : RayTracingObjectBase<RayTracingPlane, PlaneData>, IRayTracingObject<PlaneData> {
 

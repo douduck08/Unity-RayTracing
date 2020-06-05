@@ -25,10 +25,6 @@ public abstract class RayTracingObjectBase<TComponet, TData> : MonoBehaviour whe
         isDirty = true;
     }
 
-    public static ComputeBuffer CreateComputeBuffer (int count, int dataSize) {
-        return new ComputeBuffer (count, dataSize);
-    }
-
     public static bool UpdateComputeBufferIfNeeded (ref ComputeBuffer buffer, out int count) {
         if (!isDirty) {
             count = 0;

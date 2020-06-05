@@ -13,18 +13,20 @@
 // Buffers
 RWTexture2D<float4> _Result;
 RWStructuredBuffer<Ray> _RayBuffer;
-StructuredBuffer<SphereData> _SphereBuffer;
 StructuredBuffer<PlaneData> _PlaneBuffer;
-StructuredBuffer<BoxData> _BoxBuffer;
+// StructuredBuffer<SphereData> _SphereBuffer;
+// StructuredBuffer<BoxData> _BoxBuffer;
+StructuredBuffer<ShapeData> _ShapeBuffer;
 StructuredBuffer<TransformData> _TransformData;
 
 cbuffer CB {
     float4 _SkyColor;
     float4 _SunColor;
     float4 _SunDirection;
-    int _SphereNumber;
+    // int _SphereNumber;
     int _PlaneNumber;
-    int _BoxNumber;
+    // int _BoxNumber;
+    int _ShapeNumber;
 };
 
 // Functions
@@ -34,14 +36,17 @@ bool RayCast(Ray ray, out RayHit hit) {
 
     bool hit_something = false;
     int i = 0;
-    for (i = 0; i < _SphereNumber; i++) {
-        if (_SphereBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
-    }
+    // for (i = 0; i < _SphereNumber; i++) {
+        //     if (_SphereBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
+    // }
     for (i = 0; i < _PlaneNumber; i++) {
         if (_PlaneBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit)) hit_something = true;
     }
-    for (i = 0; i < _BoxNumber; i++) {
-        if (_BoxBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit, _TransformData[i])) hit_something = true;
+    // for (i = 0; i < _BoxNumber; i++) {
+        //     if (_BoxBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit, _TransformData[i])) hit_something = true;
+    // }
+    for (i = 0; i < _ShapeNumber; i++) {
+        if (_ShapeBuffer[i].Raycast(ray, MIN_RAY_DISTANCE, hit.t, /*out*/hit, _TransformData[i])) hit_something = true;
     }
     return hit_something;
 }

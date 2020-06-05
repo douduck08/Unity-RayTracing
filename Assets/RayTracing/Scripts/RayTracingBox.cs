@@ -2,45 +2,38 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public struct BoxData {
-    public Vector3 position;
-    public Vector3 rotation;
-    public Vector3 scale;
-    public Vector4 albedo;
-    public Vector4 specular;
-    public int material;
-}
+public class RayTracingBox : RayTracingShape {
 
-[RequireComponent (typeof (MeshRenderer))]
-public class RayTracingBox : RayTracingObjectBase<RayTracingBox, BoxData>, IRayTracingObject<BoxData> {
-
-    // (3 + 3 + 3 + 4 + 4 + 1) * 4 = 18 * 4
-    public const int DATA_SIZE = 72;
-
-    public RayTracingMaterial material;
-    MaterialPropertyBlock materialPropertyBlock;
-    MeshRenderer meshRenderer;
-
-    void OnEnable () {
-        material.BindRenderer (GetComponent<MeshRenderer> ());
-        AddObject (this);
-    }
-
-    void OnDisable () {
-        RemoveObject (this);
-    }
-
-    void OnValidate () {
-        material.BindRenderer (GetComponent<MeshRenderer> ());
-        UpdateObject (this);
-    }
-
-    public override BoxData GetData () {
-        BoxData result;
+    public override ShapeData GetShapeData () {
+        ShapeData result;
         result.position = transform.position;
         result.scale = transform.lossyScale;
         result.rotation = transform.eulerAngles;
-        material.GetStructData (out result.albedo, out result.specular, out result.material);
+        result.type = (int)ShapeType.Box;
+        material.GetStructData (out result.material);
         return result;
+    }
+
+    public override Aabb GetAabb () {
+        var p0 = Abs (transform.TransformVector (new Vector3 (1, 1, 1)));
+        var p1 = Abs (transform.TransformVector (new Vector3 (-1, 1, 1)));
+        var p2 = Abs (transform.TransformVector (new Vector3 (1, -1, 1)));
+        var p3 = Abs (transform.TransformVector (new Vector3 (1, 1, -1)));
+
+        var pos = transform.position;
+        var size = new Vector3 ();
+        size.x = Mathf.Max (p0.x, p1.x, p2.x, p3.x);
+        size.y = Mathf.Max (p0.y, p1.y, p2.y, p3.y);
+        size.z = Mathf.Max (p0.z, p1.z, p2.z, p3.z);
+        size *= 0.5f;
+
+        return new Aabb (pos - size, pos + size);
+    }
+
+    Vector3 Abs (Vector3 a) {
+        a.x = Mathf.Abs (a.x);
+        a.y = Mathf.Abs (a.y);
+        a.z = Mathf.Abs (a.z);
+        return a;
     }
 }

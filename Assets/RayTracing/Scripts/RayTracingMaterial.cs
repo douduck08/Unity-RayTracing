@@ -10,6 +10,14 @@ public enum MaterialType {
     Light = 10
 }
 
+public struct MaterialData {
+    public static readonly int Stride = 8 * sizeof (float) + sizeof (int);
+
+    public Vector4 albedo;
+    public Vector4 specular;
+    public int type;
+}
+
 [System.Serializable]
 public class RayTracingMaterial {
 
@@ -55,5 +63,13 @@ public class RayTracingMaterial {
         specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic); ;
         specular.w = 1f - glossiness;
         material = (int)materialType;
+    }
+
+    public void GetStructData (out MaterialData materialData) {
+        materialData.albedo = Color.Lerp (color, new Color (0.04f, 0.04f, 0.04f), metallic);
+        materialData.albedo.w = refractiveIndex;
+        materialData.specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic); ;
+        materialData.specular.w = 1f - glossiness;
+        materialData.type = (int)materialType;
     }
 }

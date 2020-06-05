@@ -121,4 +121,20 @@ struct BoxData {
     bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData);
 };
 
+struct MaterialData {
+    float4 albedo;
+    float4 specular;
+    int type;
+};
+
+struct ShapeData {
+    float3 position;
+    float3 rotation;
+    float3 scale;
+    int type;
+    MaterialData material;
+
+    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData);
+};
+
 #endif // RAY_TRACING_STRUCT_INCLUDED

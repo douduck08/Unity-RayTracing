@@ -7,11 +7,11 @@
 #include "RayTracing.cginc"
 
 // Buffers
-StructuredBuffer<BoxData> _BoxBuffer;
+StructuredBuffer<ShapeData> _ShapeBuffer;
 RWStructuredBuffer<TransformData> _TransformData;
 
 cbuffer CB {
-    int _BoxNumber;
+    int _ShapeNumber;
 };
 
 // Functions
@@ -26,10 +26,10 @@ in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices fo
 ) {
     uint dataIndex = dispatchThreadID.x;
 
-    if (dataIndex < _BoxNumber) {
-        float3 position = _BoxBuffer[dataIndex].position;
-        float3 rotation = _BoxBuffer[dataIndex].rotation;
-        float3 scale = _BoxBuffer[dataIndex].scale;
+    if (dataIndex < _ShapeNumber) {
+        float3 position = _ShapeBuffer[dataIndex].position;
+        float3 rotation = _ShapeBuffer[dataIndex].rotation;
+        float3 scale = _ShapeBuffer[dataIndex].scale;
 
         float4x4 xRotationMatrix = rotationMatrix(float3(1, 0, 0), radians(rotation.x));
         float4x4 yRotationMatrix = rotationMatrix(float3(0, 1, 0), radians(rotation.y));

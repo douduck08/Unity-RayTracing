@@ -10,6 +10,10 @@
 #define VOLUME_MATERIAL 9
 #define LIGHT_MATERIAL 10
 
+#define SPHERE_SHAPE 1
+#define BOX_SHAPE 2
+#define PLANE_SHAPE 3
+
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
 
@@ -75,6 +79,9 @@ bool BoxData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tran
     float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
     float3 d = mul(worldToObject, float4(ray.direction, 0.0)).xyz;
 
+    float out_t = 0;
+    float3 out_normal = 0;
+
     float3 m = 1.0 / d;
     float3 n = m * o;
     float3 k = abs(m) / 2.0;
@@ -88,11 +95,12 @@ bool BoxData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tran
         return false;
     }
 
-    float3 out_normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+    out_t = tN;
+    out_normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
     out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
 
     if(material == VOLUME_MATERIAL) {
-        // TODO: check if outside box
+        // TODO: add random scatter and check if outside shape
         float density = 0.1;
         float dt = -(1.0 / density) * log(Rand01(out_normal + d));
         if (dt < 1) {
@@ -103,12 +111,72 @@ bool BoxData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tran
         }
     }
 
-    hit.t = tN;
-    hit.position = ray.GetHitPoint(tN); // world space
+    hit.t = out_t;
+    hit.position = ray.GetHitPoint(out_t); // world space
     hit.normal = out_normal;
     hit.albedo = albedo;
     hit.specular = specular;
     hit.material = material;
+    return true;
+}
+
+bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData) {
+    float4x4 objectToWorld = transformData.ObjectToWorld();
+    float4x4 worldToObject = transformData.WorldToObject();
+
+    float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
+    float3 d = mul(worldToObject, float4(ray.direction, 0.0)).xyz;
+    float out_t = 0;
+    float3 out_normal = 0;
+
+    if (type == BOX_SHAPE) {
+        float3 m = 1.0 / d;
+        float3 n = m * o;
+        float3 k = abs(m) / 2.0;
+        float3 t1 = -n - k;
+        float3 t2 = -n + k;
+
+        float tN = max(max(t1.x, t1.y), t1.z);
+        float tF = min(min(t2.x, t2.y), t2.z);
+
+        if (tN > tF || tF < min_t || tN > max_t) {
+            return false;
+        }
+
+        out_t = tN;
+        out_normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+    }
+    else if (type == SPHERE_SHAPE) {
+        float3 oc = o; // oc = o - center, center = 0
+        float a = dot(d, d);
+        float b = dot(d, oc) * 2;
+        float c = dot(oc, oc) - 0.5 * 0.5; // radius = 0.5
+        float dis = b * b - 4 * a * c;
+
+        if (dis <= 0) {
+            return false;
+        }
+
+        float t = (-b - sqrt(dis)) / (2.0 * a);
+        if (t < min_t || t > max_t) {
+            return false;
+        }
+
+        out_t = t;
+        out_normal = o + d * t;
+        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+    }
+
+    // TODO: add random scatter and check if outside shape
+    // if(material == VOLUME_MATERIAL) { }
+
+    hit.t = out_t;
+    hit.position = ray.GetHitPoint(out_t); // world space
+    hit.normal = out_normal;
+    hit.albedo = material.albedo;
+    hit.specular = material.specular;
+    hit.material = material.type;
     return true;
 }
 
