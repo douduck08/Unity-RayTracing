@@ -2,44 +2,38 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public struct PlaneData {
-    public Vector3 position;
-    public Vector3 normal;
-    public Vector4 albedo;
-    public Vector4 specular;
-    public int material;
-}
+public class RayTracingPlane : RayTracingShape {
 
-// TODO: replace RayTracingObjectBase with RayTracingShape
-[RequireComponent (typeof (MeshRenderer))]
-public class RayTracingPlane : RayTracingObjectBase<RayTracingPlane, PlaneData>, IRayTracingObject<PlaneData> {
-
-    // (3 + 3 + 4 + 4 + 1) * 4 = 15 * 4
-    public const int DATA_SIZE = 60;
-
-    public RayTracingMaterial material;
-    MaterialPropertyBlock materialPropertyBlock;
-    MeshRenderer meshRenderer;
-
-    void OnEnable () {
-        material.BindRenderer (GetComponent<MeshRenderer> ());
-        AddObject (this);
-    }
-
-    void OnDisable () {
-        RemoveObject (this);
-    }
-
-    void OnValidate () {
-        material.BindRenderer (GetComponent<MeshRenderer> ());
-        UpdateObject (this);
-    }
-
-    public override PlaneData GetData () {
-        PlaneData result;
+    public override ShapeData GetShapeData () {
+        ShapeData result;
         result.position = transform.position;
-        result.normal = transform.up;
-        material.GetStructData (out result.albedo, out result.specular, out result.material);
+        result.scale = transform.lossyScale;
+        result.scale = new Vector3 (result.scale.x * 10f, result.scale.y * 0.001f, result.scale.z * 10f);
+        result.rotation = transform.eulerAngles;
+        result.type = (int)ShapeType.Box;
+        material.GetStructData (out result.material);
         return result;
+    }
+
+    public override Aabb GetAabb () {
+        var p0 = Abs (transform.TransformVector (new Vector3 (5f, 0.001f, 5f)));
+        var p1 = Abs (transform.TransformVector (new Vector3 (-5f, 0.001f, 5f)));
+        var p2 = Abs (transform.TransformVector (new Vector3 (5f, -0.001f, 5f)));
+        var p3 = Abs (transform.TransformVector (new Vector3 (5f, 0.001f, -5f)));
+
+        var pos = transform.position;
+        var size = new Vector3 ();
+        size.x = Mathf.Max (p0.x, p1.x, p2.x, p3.x);
+        size.y = Mathf.Max (p0.y, p1.y, p2.y, p3.y);
+        size.z = Mathf.Max (p0.z, p1.z, p2.z, p3.z);
+
+        return new Aabb (pos - size, pos + size);
+    }
+
+    Vector3 Abs (Vector3 a) {
+        a.x = Mathf.Abs (a.x);
+        a.y = Mathf.Abs (a.y);
+        a.z = Mathf.Abs (a.z);
+        return a;
     }
 }

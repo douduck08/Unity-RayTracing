@@ -5,7 +5,6 @@ using UnityEngine;
 public enum ShapeType {
     Sphere = 1,
     Box = 2,
-    Plane = 3
 }
 
 public struct ShapeData {
@@ -66,7 +65,7 @@ public abstract class RayTracingShape : MonoBehaviour {
         isDirty = true;
     }
 
-    public RayTracingMaterial material;
+    public RayTracingMaterial material = new RayTracingMaterial ();
 
     protected void OnEnable () {
         material.BindRenderer (GetComponent<MeshRenderer> ());

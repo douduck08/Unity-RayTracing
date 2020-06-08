@@ -48,7 +48,6 @@ public class RayTracingCamera : MonoBehaviour {
     int fibonacciOffset = 0;
     ComputeBuffer fibonacciBuffer;
     ComputeBuffer rayBuffer;
-    ComputeBuffer planeBuffer; // TODO: remove
     ComputeBuffer shapeBuffer;
     ComputeBuffer transformBuffer;
 
@@ -68,7 +67,6 @@ public class RayTracingCamera : MonoBehaviour {
     void OnDisable () {
         ReleaseComputeBuffer (ref fibonacciBuffer);
         ReleaseComputeBuffer (ref rayBuffer);
-        ReleaseComputeBuffer (ref planeBuffer);
         ReleaseComputeBuffer (ref shapeBuffer);
         ReleaseComputeBuffer (ref transformBuffer);
     }
@@ -148,10 +146,6 @@ public class RayTracingCamera : MonoBehaviour {
     void SetupComputerBuffers () {
         fibonacciBuffer = CreateSphericalFibonacciBuffer ();
         rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, RAY_STRUCT_SIZE);
-        planeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingPlane.DATA_SIZE);
-        // sphereBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingSphere.DATA_SIZE);
-        // boxBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, RayTracingBox.DATA_SIZE);
-
         shapeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, ShapeData.Stride, ComputeBufferType.Default);
         transformBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, TRANSFORM_STRUCT_SIZE, ComputeBufferType.Default);
 
@@ -159,15 +153,11 @@ public class RayTracingCamera : MonoBehaviour {
 
         resetRaysCS.SetBuffer (resetRaysKernelID, "_RayBuffer", rayBuffer);
 
-        // prepareCS.SetBuffer (prepareKernelID, "_BoxBuffer", boxBuffer);
         prepareCS.SetBuffer (prepareKernelID, "_ShapeBuffer", shapeBuffer);
         prepareCS.SetBuffer (prepareKernelID, "_TransformData", transformBuffer);
 
         rayTracingCS.SetBuffer (rayTracingKernelID, "_RayBuffer", rayBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_SphericalSampleBuffer", fibonacciBuffer);
-        rayTracingCS.SetBuffer (rayTracingKernelID, "_PlaneBuffer", planeBuffer);
-        // rayTracingCS.SetBuffer (rayTracingKernelID, "_SphereBuffer", sphereBuffer);
-        // rayTracingCS.SetBuffer (rayTracingKernelID, "_BoxBuffer", boxBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_ShapeBuffer", shapeBuffer);
         rayTracingCS.SetBuffer (rayTracingKernelID, "_TransformData", transformBuffer);
 
@@ -201,17 +191,6 @@ public class RayTracingCamera : MonoBehaviour {
 
     void UpdateComputeBuffer () {
         var count = 0;
-        // if (RayTracingSphere.UpdateComputeBufferIfNeeded (ref sphereBuffer, out count)) {
-        //     rayTracingCS.SetInt ("_SphereNumber", count);
-        // }
-        if (RayTracingPlane.UpdateComputeBufferIfNeeded (ref planeBuffer, out count)) {
-            rayTracingCS.SetInt ("_PlaneNumber", count);
-        }
-        // if (RayTracingBox.UpdateComputeBufferIfNeeded (ref boxBuffer, out count)) {
-        //     prepareCS.SetInt ("_BoxNumber", count);
-        //     rayTracingCS.SetInt ("_BoxNumber", count);
-        //     RayTracingObjectManager.BuildAabbTree ();
-        // }
 
         if (RayTracingShape.UpdateComputeBufferIfNeeded (ref shapeBuffer, out count)) {
             prepareCS.SetInt ("_ShapeNumber", count);

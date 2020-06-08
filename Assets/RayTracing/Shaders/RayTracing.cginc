@@ -4,40 +4,17 @@
 #include "Common.cginc"
 #include "RayTracingStruct.cginc"
 
+#define SPHERE_SHAPE 1
+#define BOX_SHAPE 2
+
 #define DIFFUSE_MATERIAL 1
 #define GLOSSY_MATERIAL 2
 #define TRANSLUCENT_MATERIAL 3
 #define VOLUME_MATERIAL 9
 #define LIGHT_MATERIAL 10
 
-#define SPHERE_SHAPE 1
-#define BOX_SHAPE 2
-#define PLANE_SHAPE 3
-
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
-
-bool SphereData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit) {
-    float3 oc = ray.origin - position;
-    float a = dot(ray.direction, ray.direction);
-    float b = dot(ray.direction, oc) * 2;
-    float c = dot(oc, oc) - this.radius * this.radius;
-    float dis = b * b - 4 * a * c;
-
-    if (dis > 0) {
-        float t = (-b - sqrt(dis)) / (2.0 * a);
-        if (t > min_t && t < max_t) {
-            hit.t = t;
-            hit.position = ray.GetHitPoint(t);
-            hit.normal = normalize(hit.position - position);
-            hit.albedo = albedo;
-            hit.specular = specular;
-            hit.material = material;
-            return true;
-        }
-    }
-    return false; // hit is an inout parameter, will keep value when hit nothing.
-}
 
 bool PlaneData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit) {
     float NDotD = dot(normal, ray.direction);
@@ -57,34 +34,11 @@ bool PlaneData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit) {
     return false; // hit is an inout parameter, will keep value when hit nothing.
 }
 
-bool BoxData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData) {
+bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t, float3 half_size, out float out_t, out float3 out_normal) {
     // ref: https://www.iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
-    // float4x4 xRotationMatrix = rotationMatrix(float3(1, 0, 0), radians(rotation.x));
-    // float4x4 yRotationMatrix = rotationMatrix(float3(0, 1, 0), radians(rotation.y));
-    // float4x4 zRotationMatrix = rotationMatrix(float3(0, 0, 1), radians(rotation.z));
-    // float4x4 rotMatrix = mul(yRotationMatrix, mul(zRotationMatrix, xRotationMatrix)); // objectToWorld
-
-    // float4x4 translation = {
-        //     scale.x, 0, 0, position.x,
-        //     0, scale.y, 0, position.y,
-        //     0, 0, scale.z, position.z,
-        //     0, 0, 0, 1
-    // };
-
-    // float4x4 objectToWorld = mul(translation, rotMatrix);
-    // float4x4 worldToObject = inverse(objectToWorld);
-
-    float4x4 objectToWorld = transformData.ObjectToWorld();
-    float4x4 worldToObject = transformData.WorldToObject();
-    float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
-    float3 d = mul(worldToObject, float4(ray.direction, 0.0)).xyz;
-
-    float out_t = 0;
-    float3 out_normal = 0;
-
-    float3 m = 1.0 / d;
-    float3 n = m * o;
-    float3 k = abs(m) / 2.0;
+    float3 m = 1.0 / direction;
+    float3 n = m * origin;
+    float3 k = abs(m) * half_size;
     float3 t1 = -n - k;
     float3 t2 = -n + k;
 
@@ -92,31 +46,38 @@ bool BoxData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tran
     float tF = min(min(t2.x, t2.y), t2.z);
 
     if (tN > tF || tF < min_t || tN > max_t) {
+        out_t = 0;
+        out_normal = 0;
         return false;
     }
 
     out_t = tN;
-    out_normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
-    out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+    out_normal = -sign(direction) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
+    return true;
+}
 
-    if(material == VOLUME_MATERIAL) {
-        // TODO: add random scatter and check if outside shape
-        float density = 0.1;
-        float dt = -(1.0 / density) * log(Rand01(out_normal + d));
-        if (dt < 1) {
-            tN += dt * (tF - tN);
-        }
-        else {
-            return false;
-        }
+bool SphereIntersection (float3 origin, float3 direction, float min_t, float max_t, float radius, out float out_t, out float3 out_normal) {
+    float3 oc = origin; // oc = o - center, center = 0
+    float a = dot(direction, direction);
+    float b = dot(direction, oc) * 2;
+    float c = dot(oc, oc) - radius * radius;
+    float dis = b * b - 4 * a * c;
+
+    if (dis <= 0) {
+        out_t = 0;
+        out_normal = 0;
+        return false;
     }
 
-    hit.t = out_t;
-    hit.position = ray.GetHitPoint(out_t); // world space
-    hit.normal = out_normal;
-    hit.albedo = albedo;
-    hit.specular = specular;
-    hit.material = material;
+    float t = (-b - sqrt(dis)) / (2.0 * a);
+    if (t < min_t || t > max_t) {
+        out_t = 0;
+        out_normal = 0;
+        return false;
+    }
+
+    out_t = t;
+    out_normal = origin + direction * t;
     return true;
 }
 
@@ -126,58 +87,32 @@ bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tr
 
     float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
     float3 d = mul(worldToObject, float4(ray.direction, 0.0)).xyz;
+
     float out_t = 0;
     float3 out_normal = 0;
+    bool h = false;
 
-    if (type == BOX_SHAPE) {
-        float3 m = 1.0 / d;
-        float3 n = m * o;
-        float3 k = abs(m) / 2.0;
-        float3 t1 = -n - k;
-        float3 t2 = -n + k;
-
-        float tN = max(max(t1.x, t1.y), t1.z);
-        float tF = min(min(t2.x, t2.y), t2.z);
-
-        if (tN > tF || tF < min_t || tN > max_t) {
-            return false;
-        }
-
-        out_t = tN;
-        out_normal = -sign(d) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
-        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+    if (type == SPHERE_SHAPE) {
+        h = SphereIntersection(o, d, min_t, max_t, 0.5, out_t, out_normal);
     }
-    else if (type == SPHERE_SHAPE) {
-        float3 oc = o; // oc = o - center, center = 0
-        float a = dot(d, d);
-        float b = dot(d, oc) * 2;
-        float c = dot(oc, oc) - 0.5 * 0.5; // radius = 0.5
-        float dis = b * b - 4 * a * c;
-
-        if (dis <= 0) {
-            return false;
-        }
-
-        float t = (-b - sqrt(dis)) / (2.0 * a);
-        if (t < min_t || t > max_t) {
-            return false;
-        }
-
-        out_t = t;
-        out_normal = o + d * t;
-        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+    else if (type == BOX_SHAPE) {
+        h = BoxIntersection(o, d, min_t, max_t, 0.5, out_t, out_normal);
     }
 
     // TODO: add random scatter and check if outside shape
     // if(material == VOLUME_MATERIAL) { }
 
-    hit.t = out_t;
-    hit.position = ray.GetHitPoint(out_t); // world space
-    hit.normal = out_normal;
-    hit.albedo = material.albedo;
-    hit.specular = material.specular;
-    hit.material = material.type;
-    return true;
+    if (h) {
+        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+
+        hit.t = out_t;
+        hit.position = ray.GetHitPoint(out_t); // world space
+        hit.normal = out_normal;
+        hit.albedo = material.albedo;
+        hit.specular = material.specular;
+        hit.material = material.type;
+    }
+    return h;
 }
 
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {

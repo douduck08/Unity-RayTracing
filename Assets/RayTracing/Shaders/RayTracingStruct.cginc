@@ -1,23 +1,6 @@
 #ifndef RAY_TRACING_STRUCT_INCLUDED
 #define RAY_TRACING_STRUCT_INCLUDED
 
-// struct TransformData {
-    //     float4 objectToWorldRow0;
-    //     float4 objectToWorldRow1;
-    //     float4 objectToWorldRow2;
-    //     float4 worldToObjectRow0;
-    //     float4 worldToObjectRow1;
-    //     float4 worldToObjectRow2;
-
-    //     float4x4 ObjectToWorldMatix() {
-        //         return float4x4(objectToWorldRow0, objectToWorldRow1, objectToWorldRow2, float4(0, 0, 0, 1));
-    //     }
-
-    //     float4x4 WorldToObjectMatix() {
-        //         return float4x4(worldToObjectRow0, worldToObjectRow1, worldToObjectRow2, float4(0, 0, 0, 1));
-    //     }
-// };
-
 struct TransformData {
     float4 row0;
     float4 row1;
@@ -90,16 +73,6 @@ struct RayHit {
     int material;
 };
 
-struct SphereData {
-    float3 position;
-    float radius;
-    float4 albedo;
-    float4 specular;
-    int material;
-
-    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit);
-};
-
 struct PlaneData {
     float3 position;
     float3 normal;
@@ -108,17 +81,6 @@ struct PlaneData {
     int material;
 
     bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit);
-};
-
-struct BoxData {
-    float3 position;
-    float3 rotation;
-    float3 scale;
-    float4 albedo;
-    float4 specular;
-    int material;
-
-    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData);
 };
 
 struct MaterialData {
