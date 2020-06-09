@@ -15,7 +15,7 @@ public class RayTracingSphere : RayTracingShape {
     }
 
     public override Aabb GetAabb () {
-        // TODO: bounds with rotation
+        // TODO: bounds with scale
         var pos = transform.position;
         var size = transform.lossyScale * 0.5f;
         return new Aabb (transform.position - size, transform.position + size);

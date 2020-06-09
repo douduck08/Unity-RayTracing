@@ -22,7 +22,7 @@ public struct MaterialData {
 public class RayTracingMaterial {
 
     [SerializeField] MaterialType materialType = MaterialType.Diffuse;
-    [SerializeField] Color color = Color.white;
+    [SerializeField, ColorUsage (false, false)] Color color = Color.white;
     [SerializeField, Range (0f, 1f)] float metallic = 0.02f;
     [SerializeField, Range (0f, 1f)] float glossiness = 0.5f;
     [SerializeField, Range (1f, 10f)] float refractiveIndex = 1f;

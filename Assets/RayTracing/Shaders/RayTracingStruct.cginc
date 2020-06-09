@@ -73,16 +73,6 @@ struct RayHit {
     int material;
 };
 
-struct PlaneData {
-    float3 position;
-    float3 normal;
-    float4 albedo;
-    float4 specular;
-    int material;
-
-    bool Raycast (Ray ray, float min_t, float max_t, inout RayHit hit);
-};
-
 struct MaterialData {
     float4 albedo;
     float4 specular;

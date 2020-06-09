@@ -6,6 +6,7 @@
 
 #define SPHERE_SHAPE 1
 #define BOX_SHAPE 2
+#define PLANE_SHAPE 3
 
 #define DIFFUSE_MATERIAL 1
 #define GLOSSY_MATERIAL 2
@@ -16,22 +17,29 @@
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
 
-bool PlaneData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit) {
-    float NDotD = dot(normal, ray.direction);
-    if (NDotD < -1e-6) {
-        float3 p0 = position - ray.origin;
-        float t = dot(p0, normal) / NDotD;
-        if (t >= min_t && t < max_t) {
-            hit.t = t;
-            hit.position = ray.GetHitPoint(t);
-            hit.normal = normal;
-            hit.albedo = albedo;
-            hit.specular = specular;
-            hit.material = material;
-            return true;
-        }
+bool SphereIntersection (float3 origin, float3 direction, float min_t, float max_t, float radius, out float out_t, out float3 out_normal) {
+    float3 oc = origin; // oc = o - center, center = 0
+    float a = dot(direction, direction);
+    float b = dot(direction, oc) * 2;
+    float c = dot(oc, oc) - radius * radius;
+    float dis = b * b - 4 * a * c;
+
+    if (dis <= 0) {
+        out_t = 0;
+        out_normal = 0;
+        return false;
     }
-    return false; // hit is an inout parameter, will keep value when hit nothing.
+
+    float t = (-b - sqrt(dis)) / (2.0 * a);
+    if (t < min_t || t > max_t) {
+        out_t = 0;
+        out_normal = 0;
+        return false;
+    }
+
+    out_t = t;
+    out_normal = normalize(origin + direction * t);
+    return true;
 }
 
 bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t, float3 half_size, out float out_t, out float3 out_normal) {
@@ -56,29 +64,21 @@ bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t,
     return true;
 }
 
-bool SphereIntersection (float3 origin, float3 direction, float min_t, float max_t, float radius, out float out_t, out float3 out_normal) {
-    float3 oc = origin; // oc = o - center, center = 0
-    float a = dot(direction, direction);
-    float b = dot(direction, oc) * 2;
-    float c = dot(oc, oc) - radius * radius;
-    float dis = b * b - 4 * a * c;
-
-    if (dis <= 0) {
-        out_t = 0;
-        out_normal = 0;
-        return false;
+bool PlaneIntersection (float3 origin, float3 direction, float min_t, float max_t, float3 normal, out float out_t, out float3 out_normal) {
+    float NDotD = dot(normal, direction);
+    if (NDotD < -1e-6) {
+        float3 p0 = -origin;
+        float t = dot(p0, normal) / NDotD;
+        if (t >= min_t && t < max_t) {
+            out_t = t;
+            out_normal = normal;
+            return true;
+        }
     }
 
-    float t = (-b - sqrt(dis)) / (2.0 * a);
-    if (t < min_t || t > max_t) {
-        out_t = 0;
-        out_normal = 0;
-        return false;
-    }
-
-    out_t = t;
-    out_normal = origin + direction * t;
-    return true;
+    out_t = 0;
+    out_normal = 0;
+    return false;
 }
 
 bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData) {
@@ -86,7 +86,7 @@ bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tr
     float4x4 worldToObject = transformData.WorldToObject();
 
     float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
-    float3 d = mul(worldToObject, float4(ray.direction, 0.0)).xyz;
+    float3 d = mul((float3x3)worldToObject, ray.direction);
 
     float out_t = 0;
     float3 out_normal = 0;
@@ -98,12 +98,17 @@ bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tr
     else if (type == BOX_SHAPE) {
         h = BoxIntersection(o, d, min_t, max_t, 0.5, out_t, out_normal);
     }
+    else if (type == PLANE_SHAPE) {
+        // h = BoxIntersection(o, d, min_t, max_t, float3(5, 0.001, 5), out_t, out_normal);
+        h = PlaneIntersection(o, d, min_t, max_t, float3(0, 1, 0), out_t, out_normal);
+    }
 
     // TODO: add random scatter and check if outside shape
     // if(material == VOLUME_MATERIAL) { }
 
     if (h) {
-        out_normal = mul(objectToWorld, float4(out_normal, 0.0)).xyz;
+        out_normal = mul((float3x3)objectToWorld, out_normal);
+        out_normal = normalize(out_normal);
 
         hit.t = out_t;
         hit.position = ray.GetHitPoint(out_t); // world space

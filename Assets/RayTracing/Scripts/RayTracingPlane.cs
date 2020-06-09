@@ -8,9 +8,8 @@ public class RayTracingPlane : RayTracingShape {
         ShapeData result;
         result.position = transform.position;
         result.scale = transform.lossyScale;
-        result.scale = new Vector3 (result.scale.x * 10f, result.scale.y * 0.001f, result.scale.z * 10f);
         result.rotation = transform.eulerAngles;
-        result.type = (int)ShapeType.Box;
+        result.type = (int)ShapeType.Plane;
         material.GetStructData (out result.material);
         return result;
     }

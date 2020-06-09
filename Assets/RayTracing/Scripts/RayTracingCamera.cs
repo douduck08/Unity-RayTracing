@@ -51,7 +51,7 @@ public class RayTracingCamera : MonoBehaviour {
     ComputeBuffer shapeBuffer;
     ComputeBuffer transformBuffer;
 
-    bool needInitRay = true;
+    bool sceneChanged = true;
     Material denoiseMaterial;
 
     // initializing part
@@ -72,7 +72,7 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void OnValidate () {
-        needInitRay = true;
+        sceneChanged = true;
         UpdateLightingParameters ();
     }
 
@@ -83,8 +83,8 @@ public class RayTracingCamera : MonoBehaviour {
     }
 
     void OnPreCull () {
-        if (needInitRay) {
-            needInitRay = false;
+        if (sceneChanged) {
+            sceneChanged = false;
             initializeRaysCS.Dispatch (initializeRaysKernelID, threadGroup.x, threadGroup.y, superSampling);
             prepareCS.Dispatch (prepareKernelID, Mathf.CeilToInt (MAX_OBJECT_COUNT / 128.0f), 1, 1);
         } else {
@@ -196,6 +196,7 @@ public class RayTracingCamera : MonoBehaviour {
             prepareCS.SetInt ("_ShapeNumber", count);
             rayTracingCS.SetInt ("_ShapeNumber", count);
             RayTracingShape.RebuildAabbTree ();
+            sceneChanged = true;
         }
     }
 

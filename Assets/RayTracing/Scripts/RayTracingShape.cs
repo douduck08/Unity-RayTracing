@@ -5,6 +5,7 @@ using UnityEngine;
 public enum ShapeType {
     Sphere = 1,
     Box = 2,
+    Plane = 3,
 }
 
 public struct ShapeData {
@@ -76,7 +77,14 @@ public abstract class RayTracingShape : MonoBehaviour {
         RemoveObject (this);
     }
 
-    void OnValidate () {
+    protected void Update () {
+        if (transform.hasChanged) {
+            UpdateObject (this);
+            transform.hasChanged = false;
+        }
+    }
+
+    protected void OnValidate () {
         material.BindRenderer (GetComponent<MeshRenderer> ());
         UpdateObject (this);
     }
