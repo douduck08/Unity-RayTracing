@@ -30,7 +30,7 @@ in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices fo
     float3 color = 0;
     int samples = 0;
     for (uint rayIndex = firstIndex; rayIndex < rayNumber; rayIndex += totalPixels) {
-        color += saturate(_RayBuffer[rayIndex].color + _RayBuffer[rayIndex].emission);
+        color += _RayBuffer[rayIndex].color + _RayBuffer[rayIndex].emission;
         samples += 1;
     }
 

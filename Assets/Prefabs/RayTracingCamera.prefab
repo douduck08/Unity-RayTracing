@@ -105,10 +105,10 @@ MonoBehaviour:
   denoiseShader: {fileID: 4800000, guid: a75c74cff2669f5498862bc0fc7a0e8f, type: 3}
   renderTextureWidth: 512
   renderTextureHeight: 512
-  superSampling: 2
+  superSampling: 1
   sunLight: {fileID: 0}
-  skyColor: {r: 0.8537736, g: 1, b: 0.9840352, a: 1}
-  lightBounceRatio: 0.2
+  skyColor: {r: 0, g: 0, b: 0, a: 1}
+  lightBounceRatio: 0.75
   denoise: 0
   denoiseExponent: 128
 --- !u!114 &6055036569721389741

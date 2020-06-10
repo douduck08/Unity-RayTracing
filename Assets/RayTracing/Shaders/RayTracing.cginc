@@ -191,12 +191,12 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
 
 bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
     // ray.emission = ray.color * hit.albedo.rgb;
-    ray.emission += ray.color * hit.albedo.rgb;
+    ray.emission += ray.color * hit.albedo.rgb * 5;
     // TODO
     scattered_ray = RedirectRay(
     0,
     0,
-    ray.color * BOUNCE_RATIO,
+    ray.color * hit.albedo.rgb * BOUNCE_RATIO,
     ray
     );
     return true;

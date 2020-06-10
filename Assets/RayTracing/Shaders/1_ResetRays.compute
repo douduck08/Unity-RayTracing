@@ -39,6 +39,7 @@ in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices fo
     float3 dir = GetRayDirection(uv);
 
     Ray ray = _RayBuffer[rayIndex];
+    ray.emission = 0;
     ray = RedirectRay(_WorldSpaceCameraPos.xyz, dir, 1, ray);
     _RayBuffer[rayIndex] = ray;
 }

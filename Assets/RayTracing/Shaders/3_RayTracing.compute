@@ -6,7 +6,7 @@
 
 #define MIN_RAY_DISTANCE 0.001
 #define MAX_RAY_DISTANCE 1000.0
-#define MAX_RAY_STEP 20
+#define MAX_RAY_STEP 30
 
 #include "RayTracing.cginc"
 

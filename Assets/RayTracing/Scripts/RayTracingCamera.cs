@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 [RequireComponent (typeof (Camera))]
 public class RayTracingCamera : MonoBehaviour {
 
-    public const int MAX_OBJECT_COUNT = 64;
+    public const int MAX_OBJECT_COUNT = 1024;
     public const int TRANSFORM_STRUCT_SIZE = 96; // 4 * 6 * 4
     public const int RAY_STRUCT_SIZE = 64;
 
