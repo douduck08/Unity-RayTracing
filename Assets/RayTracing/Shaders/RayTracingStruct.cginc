@@ -23,8 +23,6 @@ struct Ray {
     float3 direction;
     float3 color;
     float3 emission;
-    float3 output;
-    int count;
 
     float3 GetHitPoint (float t) {
         return origin + direction * t;
@@ -48,19 +46,15 @@ Ray CreateRay (float3 origin, float3 direction) {
     ray.direction = normalize(direction);
     ray.color = 1;
     ray.emission = 0;
-    ray.output = 0;
-    ray.count = 0;
     return ray;
 }
 
-Ray RedirectRay (float3 origin, float3 direction, float3 color, Ray old) {
+Ray CreateRay (float3 origin, float3 direction, float3 color, float3 emission) {
     Ray ray = (Ray)0;
     ray.origin = origin;
     ray.direction = normalize(direction);
     ray.color = color;
-    ray.emission = old.emission;
-    ray.output = old.output;
-    ray.count = old.count;
+    ray.emission = emission;
     return ray;
 }
 

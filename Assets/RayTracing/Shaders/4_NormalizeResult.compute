@@ -9,6 +9,7 @@
 // Buffers
 RWTexture2D<float4> _Result;
 RWStructuredBuffer<Ray> _RayBuffer;
+RWStructuredBuffer<float4> _SampleBuffer;
 
 // Kernels
 [numthreads(THREAD_GROUP_SIZE_X, THREAD_GROUP_SIZE_Y, THREAD_GROUP_SIZE_Z)]
@@ -27,30 +28,17 @@ in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices fo
     uint firstIndex = dispatchThreadID.x + dispatchThreadID.y * width;
     uint totalPixels = width * height;
 
-    float3 color = 0;
-    int samples = 0;
+    float4 sampleColor = _SampleBuffer[firstIndex];
     for (uint rayIndex = firstIndex; rayIndex < rayNumber; rayIndex += totalPixels) {
-        color += _RayBuffer[rayIndex].color + _RayBuffer[rayIndex].emission;
-        samples += 1;
+        sampleColor.rgb += _RayBuffer[rayIndex].color + _RayBuffer[rayIndex].emission;
+        sampleColor.a += 1;
     }
+    _SampleBuffer[firstIndex] = sampleColor;
 
-    Ray ray = _RayBuffer[firstIndex];
-    ray.output += color;
-    ray.count += samples;
-    _RayBuffer[firstIndex] = ray;
-
-    color = 0;
-    if (ray.count > 0) {
-        color = ray.output / ray.count;
-        // color = ray.count / 1000;
+    float3 color = 0;
+    if (sampleColor.a > 0) {
+        color = sampleColor.rgb / sampleColor.a;
     }
-
-    // if (samples > 0) {
-        //     color /= samples;
-    // }
-
-    // color = GammaToLinearSpace(color);
-    // color = exp2(-color);
 
     _Result[dispatchThreadID.xy] = float4(color, 1);
 }

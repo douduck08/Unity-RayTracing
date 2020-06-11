@@ -121,11 +121,11 @@ bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, Tr
 }
 
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
-    scattered_ray = RedirectRay(
+    scattered_ray = CreateRay(
     hit.position + 0.001 * hit.normal,
     hit.normal + RandInUnitSphere(hit.normal + hit.position),
     ray.color * hit.albedo.rgb * BOUNCE_RATIO,
-    ray
+    ray.emission
     );
     return true;
 }
@@ -135,11 +135,11 @@ bool ScatterReflection (Ray ray, RayHit hit, out Ray scattered_ray) {
     float3 reflection = reflect(normalize(ray.direction), hit.normal);
     reflection = reflection + fuzz * RandInUnitSphere(hit.normal + hit.position);
 
-    scattered_ray = RedirectRay(
+    scattered_ray = CreateRay(
     hit.position + 0.001 * hit.normal,
     reflection,
     ray.color * hit.specular.rgb * BOUNCE_RATIO,
-    ray
+    ray.emission
     );
     return dot(reflection, hit.normal) > 0;
 }
@@ -171,43 +171,40 @@ bool ScatterRefraction (Ray ray, RayHit hit, out Ray scattered_ray) {
     }
 
     if (Rand01(hit.normal + hit.position) > reflect_prob) {
-        scattered_ray = RedirectRay(
+        scattered_ray = CreateRay(
         hit.position - 0.001 * normal,
         refraction,
         ray.color * hit.albedo.rgb,
-        ray
+        ray.emission
         );
     }
     else {
-        scattered_ray = RedirectRay(
+        scattered_ray = CreateRay(
         hit.position + 0.001 * hit.normal,
         reflection,
         ray.color * hit.specular.rgb * BOUNCE_RATIO,
-        ray
+        ray.emission
         );
     }
     return true;
 }
 
 bool HitLight (Ray ray, RayHit hit, out Ray scattered_ray) {
-    // ray.emission = ray.color * hit.albedo.rgb;
-    ray.emission += ray.color * hit.albedo.rgb * 5;
-    // TODO
-    scattered_ray = RedirectRay(
+    scattered_ray = CreateRay(
     0,
     0,
     ray.color * hit.albedo.rgb * BOUNCE_RATIO,
-    ray
+    ray.emission + ray.color * hit.albedo.rgb * hit.albedo.a
     );
     return true;
 }
 
 bool ScatterVolume (Ray ray, RayHit hit, out Ray scattered_ray) {
-    scattered_ray = RedirectRay(
+    scattered_ray = CreateRay(
     hit.position,
     RandInUnitSphere(hit.normal + hit.position),
     ray.color * hit.albedo.rgb,
-    ray
+    ray.emission
     );
     return true;
 }

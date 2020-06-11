@@ -55,7 +55,7 @@ bool SampleColor (Ray ray, out Ray scattered_ray) {
         // ** debug **
     }
     else {
-        scattered_ray = RedirectRay (0, 0, ray.color * SampleEnvColor(ray.direction), ray);
+        scattered_ray = CreateRay (0, 0, ray.color * SampleEnvColor(ray.direction), ray.emission);
         // scattered_ray.color = ray.color * SampleEnvColor(ray.direction);
     }
     return hit_something;

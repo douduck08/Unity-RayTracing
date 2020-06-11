@@ -9,6 +9,7 @@
 // Buffers
 RWTexture2D<float4> _Result;
 RWStructuredBuffer<Ray> _RayBuffer;
+RWStructuredBuffer<float4> _SampleBuffer;
 
 cbuffer CB {
     float4 _WorldSpaceCameraPos;
@@ -40,4 +41,5 @@ in uint3 groupThreadID    : SV_GroupThreadID // uint3 GroupThreadId = indices fo
 
     Ray ray = CreateRay(_WorldSpaceCameraPos.xyz, dir);
     _RayBuffer[rayIndex] = ray;
+    _SampleBuffer[rayIndex] = 0;
 }

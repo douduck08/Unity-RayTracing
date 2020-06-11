@@ -7,8 +7,8 @@ using UnityEngine.Rendering;
 public class RayTracingCamera : MonoBehaviour {
 
     public const int MAX_OBJECT_COUNT = 1024;
-    public const int TRANSFORM_STRUCT_SIZE = 96; // 4 * 6 * 4
-    public const int RAY_STRUCT_SIZE = 64;
+    public const int TRANSFORM_DATA_STRIDE = 4 * 6 * sizeof (float);
+    public const int RAY_DATA_STRIDE = 3 * 4 * sizeof (float);
 
     [Header ("Shaders")]
     [SerializeField] ComputeShader initializeRaysCS;
@@ -27,7 +27,7 @@ public class RayTracingCamera : MonoBehaviour {
     [Header ("Quality Settings")]
     [SerializeField] int renderTextureWidth = 1024;
     [SerializeField] int renderTextureHeight = 1024;
-    [SerializeField] int superSampling = 8;
+    // [SerializeField] int superSampling = 8;
 
     [Header ("Lighting Settings")]
     [SerializeField] Light sunLight;
@@ -48,6 +48,7 @@ public class RayTracingCamera : MonoBehaviour {
     int fibonacciOffset = 0;
     ComputeBuffer fibonacciBuffer;
     ComputeBuffer rayBuffer;
+    ComputeBuffer sampleBuffer;
     ComputeBuffer shapeBuffer;
     ComputeBuffer transformBuffer;
 
@@ -67,6 +68,7 @@ public class RayTracingCamera : MonoBehaviour {
     void OnDisable () {
         ReleaseComputeBuffer (ref fibonacciBuffer);
         ReleaseComputeBuffer (ref rayBuffer);
+        ReleaseComputeBuffer (ref sampleBuffer);
         ReleaseComputeBuffer (ref shapeBuffer);
         ReleaseComputeBuffer (ref transformBuffer);
     }
@@ -85,12 +87,12 @@ public class RayTracingCamera : MonoBehaviour {
     void OnPreCull () {
         if (sceneChanged) {
             sceneChanged = false;
-            initializeRaysCS.Dispatch (initializeRaysKernelID, threadGroup.x, threadGroup.y, superSampling);
+            initializeRaysCS.Dispatch (initializeRaysKernelID, threadGroup.x, threadGroup.y, 1);
             prepareCS.Dispatch (prepareKernelID, Mathf.CeilToInt (MAX_OBJECT_COUNT / 128.0f), 1, 1);
         } else {
-            resetRaysCS.Dispatch (resetRaysKernelID, threadGroup.x, threadGroup.y, superSampling);
+            resetRaysCS.Dispatch (resetRaysKernelID, threadGroup.x, threadGroup.y, 1);
         }
-        rayTracingCS.Dispatch (rayTracingKernelID, threadGroup.x, threadGroup.y, superSampling);
+        rayTracingCS.Dispatch (rayTracingKernelID, threadGroup.x, threadGroup.y, 1);
         normalizeResultCS.Dispatch (normalizeResultKernelID, threadGroup.x, threadGroup.y, 1);
     }
 
@@ -145,11 +147,13 @@ public class RayTracingCamera : MonoBehaviour {
 
     void SetupComputerBuffers () {
         fibonacciBuffer = CreateSphericalFibonacciBuffer ();
-        rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight * superSampling, RAY_STRUCT_SIZE);
+        rayBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight, RAY_DATA_STRIDE, ComputeBufferType.Default);
+        sampleBuffer = new ComputeBuffer (renderTextureWidth * renderTextureHeight, 4 * sizeof (float), ComputeBufferType.Default);
         shapeBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, ShapeData.Stride, ComputeBufferType.Default);
-        transformBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, TRANSFORM_STRUCT_SIZE, ComputeBufferType.Default);
+        transformBuffer = new ComputeBuffer (MAX_OBJECT_COUNT, TRANSFORM_DATA_STRIDE, ComputeBufferType.Default);
 
         initializeRaysCS.SetBuffer (initializeRaysKernelID, "_RayBuffer", rayBuffer);
+        initializeRaysCS.SetBuffer (initializeRaysKernelID, "_SampleBuffer", sampleBuffer);
 
         resetRaysCS.SetBuffer (resetRaysKernelID, "_RayBuffer", rayBuffer);
 
@@ -162,6 +166,7 @@ public class RayTracingCamera : MonoBehaviour {
         rayTracingCS.SetBuffer (rayTracingKernelID, "_TransformData", transformBuffer);
 
         normalizeResultCS.SetBuffer (normalizeResultKernelID, "_RayBuffer", rayBuffer);
+        normalizeResultCS.SetBuffer (normalizeResultKernelID, "_SampleBuffer", sampleBuffer);
     }
 
     void UpdateLightingParameters () {

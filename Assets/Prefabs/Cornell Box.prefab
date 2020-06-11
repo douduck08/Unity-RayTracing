@@ -111,6 +111,7 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1
 --- !u!1 &1497569821507390555
 GameObject:
   m_ObjectHideFlags: 0
@@ -258,6 +259,7 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1
 --- !u!1 &9124820025290207657
 GameObject:
   m_ObjectHideFlags: 0
@@ -368,6 +370,7 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1
 --- !u!1 &9124820025340626433
 GameObject:
   m_ObjectHideFlags: 0
@@ -478,6 +481,7 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1
 --- !u!1 &9124820025456048163
 GameObject:
   m_ObjectHideFlags: 0
@@ -588,6 +592,7 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1
 --- !u!1 &9124820025469770939
 GameObject:
   m_ObjectHideFlags: 0
@@ -694,10 +699,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   material:
     materialType: 10
-    color: {r: 1, g: 1, b: 1, a: 1}
+    color: {r: 1, g: 0.7560267, b: 0.48584908, a: 1}
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 5
 --- !u!1 &9124820025476646132
 GameObject:
   m_ObjectHideFlags: 0
@@ -808,3 +814,4 @@ MonoBehaviour:
     metallic: 0.02
     glossiness: 0.5
     refractiveIndex: 1
+    lightBoost: 1

@@ -70,7 +70,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_AllowMSAA: 0
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 1
@@ -103,9 +103,8 @@ MonoBehaviour:
   rayTracingCS: {fileID: 7200000, guid: b56d2c59c5e0c6045be7366581882a0f, type: 3}
   normalizeResultCS: {fileID: 7200000, guid: 23d6a41d7cdd6564a98a212b677fcf36, type: 3}
   denoiseShader: {fileID: 4800000, guid: a75c74cff2669f5498862bc0fc7a0e8f, type: 3}
-  renderTextureWidth: 512
-  renderTextureHeight: 512
-  superSampling: 1
+  renderTextureWidth: 1024
+  renderTextureHeight: 1024
   sunLight: {fileID: 0}
   skyColor: {r: 0, g: 0, b: 0, a: 1}
   lightBounceRatio: 0.75
