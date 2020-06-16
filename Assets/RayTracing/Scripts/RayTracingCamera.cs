@@ -46,6 +46,8 @@ public class RayTracingCamera : MonoBehaviour {
     Vector2Int threadGroup = new Vector2Int ();
 
     int fibonacciOffset = 0;
+    float randOffset = 0f;
+
     ComputeBuffer fibonacciBuffer;
     ComputeBuffer rayBuffer;
     ComputeBuffer sampleBuffer;
@@ -80,7 +82,8 @@ public class RayTracingCamera : MonoBehaviour {
 
     // rendering part
     void LateUpdate () {
-        UpdateKernalParameters ();
+        UpdateCameraParameters ();
+        UpdateRandomParameters ();
         UpdateComputeBuffer ();
     }
 
@@ -178,7 +181,7 @@ public class RayTracingCamera : MonoBehaviour {
         rayTracingCS.SetFloat ("_BounceRatio", lightBounceRatio);
     }
 
-    void UpdateKernalParameters () {
+    void UpdateCameraParameters () {
         renderCamera.CalculateFrustumCorners (new Rect (0, 0, 1, 1), renderCamera.farClipPlane, Camera.MonoOrStereoscopicEye.Mono, frustumCorners);
         cameraFrustumCorners.SetRow (0, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[0])));
         cameraFrustumCorners.SetRow (1, transform.localToWorldMatrix.MultiplyVector (Vector3.Normalize (frustumCorners[1])));
@@ -190,8 +193,15 @@ public class RayTracingCamera : MonoBehaviour {
         resetRaysCS.SetMatrix ("_CameraFrustumCorners", cameraFrustumCorners);
         resetRaysCS.SetVector ("_WorldSpaceCameraPos", renderCamera.transform.position);
 
-        fibonacciOffset = (fibonacciOffset + Mathf.CeilToInt (1793 * Time.deltaTime)) % 4096;
+
+    }
+
+    void UpdateRandomParameters () {
+        fibonacciOffset = (fibonacciOffset + 179) % 4096;
         rayTracingCS.SetInt ("_SphericalSampleOffset", fibonacciOffset);
+
+        randOffset = (randOffset + 0.19f) % 1f;
+        rayTracingCS.SetFloat ("_RandOffset", randOffset);
     }
 
     void UpdateComputeBuffer () {

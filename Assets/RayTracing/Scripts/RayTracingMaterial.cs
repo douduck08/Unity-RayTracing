@@ -27,6 +27,7 @@ public class RayTracingMaterial {
     [SerializeField, Range (0f, 1f)] float glossiness = 0.5f;
     [SerializeField, Range (1f, 10f)] float refractiveIndex = 1f;
     [SerializeField, Range (1f, 10f)] float lightBoost = 1f;
+    [SerializeField, Range (0.1f, 10f)] float density = 1f;
 
     MaterialPropertyBlock materialPropertyBlock;
     Renderer renderer;
@@ -60,7 +61,7 @@ public class RayTracingMaterial {
 
     public void GetStructData (out Vector4 albedo, out Vector4 specular, out int material) {
         albedo = Color.Lerp (color, new Color (0.04f, 0.04f, 0.04f), metallic);
-        albedo.w = materialType == MaterialType.Light ? lightBoost : refractiveIndex;
+        albedo.w = GetAlbedoW ();
         specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic); ;
         specular.w = 1f - glossiness;
         material = (int)materialType;
@@ -68,9 +69,15 @@ public class RayTracingMaterial {
 
     public void GetStructData (out MaterialData materialData) {
         materialData.albedo = Color.Lerp (color, new Color (0.04f, 0.04f, 0.04f), metallic);
-        materialData.albedo.w = materialType == MaterialType.Light ? lightBoost : refractiveIndex;
+        materialData.albedo.w = GetAlbedoW ();
         materialData.specular = Color.Lerp (new Color (1f, 1f, 1f), color, metallic); ;
         materialData.specular.w = 1f - glossiness;
         materialData.type = (int)materialType;
+    }
+
+    float GetAlbedoW () {
+        if (materialType == MaterialType.Light) return lightBoost;
+        if (materialType == MaterialType.Volume) return density;
+        return refractiveIndex;
     }
 }

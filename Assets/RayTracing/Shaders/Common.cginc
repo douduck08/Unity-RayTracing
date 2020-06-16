@@ -7,6 +7,8 @@ RWStructuredBuffer<float3> _SphericalSampleBuffer;
 int _SphericalSampleOffset;
 #endif
 
+float _RandOffset;
+
 uint GetIndex (uint3 id, uint width, uint height) {
     return id.x + width * id.y + width * height * id.z;
 }
@@ -41,7 +43,7 @@ float3 RandInUnitSphere (float3 seed) {
 }
 
 float Rand01 (float3 seed) {
-    return abs(RandInUnitSphere (seed).x);
+    return frac(_RandOffset + Hash(seed.xy + seed.yz));
 }
 
 float3 GammaToLinearSpace (float3 sRGB) {

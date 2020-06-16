@@ -17,7 +17,7 @@
 #define BOUNCE_RATIO _BounceRatio
 float _BounceRatio;
 
-bool SphereIntersection (float3 origin, float3 direction, float min_t, float max_t, float radius, out float out_t, out float3 out_normal) {
+bool SphereIntersection (float3 origin, float3 direction, float min_t, float max_t, float radius, out float out_t, out float far_t, out float3 out_normal) {
     float3 oc = origin; // oc = o - center, center = 0
     float a = dot(direction, direction);
     float b = dot(direction, oc) * 2;
@@ -30,7 +30,8 @@ bool SphereIntersection (float3 origin, float3 direction, float min_t, float max
         return false;
     }
 
-    float t = (-b - sqrt(dis)) / (2.0 * a);
+    dis = sqrt(dis);
+    float t = (-b - dis) / (2.0 * a);
     if (t < min_t || t > max_t) {
         out_t = 0;
         out_normal = 0;
@@ -38,11 +39,12 @@ bool SphereIntersection (float3 origin, float3 direction, float min_t, float max
     }
 
     out_t = t;
+    far_t = (-b + dis) / (2.0 * a);
     out_normal = normalize(origin + direction * t);
     return true;
 }
 
-bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t, float3 half_size, out float out_t, out float3 out_normal) {
+bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t, float3 half_size, out float out_t, out float far_t, out float3 out_normal) {
     // ref: https://www.iquilezles.org/www/articles/boxfunctions/boxfunctions.htm
     float3 m = 1.0 / direction;
     float3 n = m * origin;
@@ -60,6 +62,7 @@ bool BoxIntersection (float3 origin, float3 direction, float min_t, float max_t,
     }
 
     out_t = tN;
+    far_t = tF;
     out_normal = -sign(direction) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
     return true;
 }
@@ -81,43 +84,52 @@ bool PlaneIntersection (float3 origin, float3 direction, float min_t, float max_
     return false;
 }
 
-bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hit, TransformData transformData) {
+bool ShapeData::Raycast (Ray ray, float min_t, float max_t, inout RayHit hitInfo, TransformData transformData) {
     float4x4 objectToWorld = transformData.ObjectToWorld();
     float4x4 worldToObject = transformData.WorldToObject();
 
     float3 o = mul(worldToObject, float4(ray.origin, 1.0)).xyz; // world to object space
     float3 d = mul((float3x3)worldToObject, ray.direction);
 
-    float out_t = 0;
+    float out_t = 0, far_t = 0;
     float3 out_normal = 0;
-    bool h = false;
+    bool hit = false;
 
     if (type == SPHERE_SHAPE) {
-        h = SphereIntersection(o, d, min_t, max_t, 0.5, out_t, out_normal);
+        hit = SphereIntersection(o, d, min_t, max_t, 0.5, out_t, far_t, out_normal);
     }
     else if (type == BOX_SHAPE) {
-        h = BoxIntersection(o, d, min_t, max_t, 0.5, out_t, out_normal);
+        hit = BoxIntersection(o, d, min_t, max_t, 0.5, out_t, far_t, out_normal);
     }
     else if (type == PLANE_SHAPE) {
-        // h = BoxIntersection(o, d, min_t, max_t, float3(5, 0.001, 5), out_t, out_normal);
-        h = PlaneIntersection(o, d, min_t, max_t, float3(0, 1, 0), out_t, out_normal);
+        // hit = BoxIntersection(o, d, min_t, max_t, float3(5, 0.001, 5), out_t, far_t, out_normal);
+        hit = PlaneIntersection(o, d, min_t, max_t, float3(0, 1, 0), out_t, out_normal);
+        far_t = out_t;
     }
 
-    // TODO: add random scatter and check if outside shape
-    // if(material == VOLUME_MATERIAL) { }
+    if(hit && material.type == VOLUME_MATERIAL) {
+        float density = material.albedo.w;
+        float dt = -(1.0 / density) * log(Rand01(out_normal + d));
+        if (dt < far_t - out_t) {
+            out_t += dt;
+        }
+        else {
+            hit = false;
+        }
+    }
 
-    if (h) {
+    if (hit) {
         out_normal = mul((float3x3)objectToWorld, out_normal);
         out_normal = normalize(out_normal);
 
-        hit.t = out_t;
-        hit.position = ray.GetHitPoint(out_t); // world space
-        hit.normal = out_normal;
-        hit.albedo = material.albedo;
-        hit.specular = material.specular;
-        hit.material = material.type;
+        hitInfo.t = out_t;
+        hitInfo.position = ray.GetHitPoint(out_t); // world space
+        hitInfo.normal = out_normal;
+        hitInfo.albedo = material.albedo;
+        hitInfo.specular = material.specular;
+        hitInfo.material = material.type;
     }
-    return h;
+    return hit;
 }
 
 bool ScatterLambertian (Ray ray, RayHit hit, out Ray scattered_ray) {
